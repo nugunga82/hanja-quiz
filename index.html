@@ -122,6 +122,36 @@ td.num,th.num{text-align:right}
 .off{opacity:.45}
 .codein{font-family:var(--display);font-size:2rem;letter-spacing:.3em;text-align:center}
 </style>
+<style>
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{border-width:2px}
+.seg button.on{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.kind{font-size:.72rem;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.kind.parent{border-color:var(--p1);color:var(--p1)}
+.banner{border-radius:14px;padding:14px 16px;text-align:center;font-family:var(--display);font-size:1.5rem;line-height:1.3}
+.banner small{display:block;font-family:var(--body);font-size:.9rem;margin-top:4px}
+.banner.great{background:var(--ok-soft);color:var(--ok);border:2px solid var(--ok)}
+.banner.good{background:var(--accent-soft);color:var(--accent);border:2px solid var(--accent)}
+.banner.zero{background:var(--bg);color:var(--muted);border:2px dashed var(--line)}
+.banner.minus{background:var(--bad-soft);color:var(--bad);border:2px solid var(--bad)}
+.combo{display:inline-block;font-family:var(--display);color:var(--p1);font-size:1.1rem}
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+.banner.anim{animation:pop .45s ease-out}
+.rb{display:flex;flex-direction:column}
+.rb-row{display:grid;grid-template-columns:2rem 1fr auto 3.5rem;gap:8px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--line);background:var(--surface);font-variant-numeric:tabular-nums}
+.rb-row.head{font-size:.8rem;color:var(--muted);padding-top:0}
+.rb-row .gain{font-size:.9rem;color:var(--muted);text-align:right}
+.rb-row .tot{text-align:right;font-weight:700}
+.up{color:var(--ok);font-size:.75rem;margin-left:4px}
+.sentence{font-size:1.2rem;line-height:1.9;word-break:keep-all}
+.blank{display:inline-block;min-width:4.5em;border-bottom:3px solid var(--accent);text-align:center;color:var(--accent);font-family:var(--display)}
+.sentence mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 3px;font-weight:700}
+.endtable th,.endtable td{padding:8px 4px;font-size:.88rem}
+table.learned td:nth-child(-n+2){white-space:nowrap}
+.endtable td:nth-child(2){white-space:nowrap}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:20}
+@media (prefers-reduced-motion: reduce){ .banner.anim{animation:none} }
+</style>
 </head>
 <body>
 <header class="top">
@@ -139,6 +169,7 @@ const meEl = document.getElementById('me');
 const MAXP = 4;
 const PREFIX = 'hanjaquiz-bnj-';
 const params = new URLSearchParams(location.search);
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- utils ---------- */
 const LS = {
@@ -154,21 +185,38 @@ function shuffled(arr,key){ const r=rng(hashStr(key)); const a=arr.slice(); for(
 let toastT=null;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toastT); toastT=setTimeout(()=>t.style.display='none',3200); }
 function jparse(s){ try { return JSON.parse(s); } catch(e){ return null; } }
+const fmt = n => String(Math.round(n*10)/10);
+const signed = n => (n>0?'+':'')+fmt(n);
 
 /* ---------- state ---------- */
 let pid = LS.get('hq_pid'); if(!pid){ pid = rid(10); LS.set('hq_pid', pid); }
 const S = {
-  role:null,            // 'host' | 'player' | null
-  G:null,               // game state (host owns it, players get copies)
-  sets:[], setsLoaded:false,
+  role:null, G:null, sets:[], setsLoaded:false,
   name: LS.get('hq_name') || '',
+  kind: LS.get('hq_kind') || '',
+  sound: LS.get('hq_sound') !== 'off',
   code: (params.get('room')||'').replace(/\D/g,'').slice(0,4),
-  err:'', status:'', draft:{}, confirm:null, showImport:false, importText:'', qr:{}
+  err:'', status:'', draft:{}, confirm:null, showImport:false, importText:'', qr:{}, fxKey:''
 };
 
 /* ---------- derived ---------- */
 const words = () => (S.G && S.G.set && Array.isArray(S.G.set.words)) ? S.G.set.words : [];
 const r2words = () => words().filter(w => w.r2 && Array.isArray(w.r2.options) && w.r2.options.length);
+function sentencesOf(t){ return String(t||'').replace(/["“”]/g,'').replace(/([.?!])\s+/g,'$1\n').split('\n').map(s=>s.trim()).filter(Boolean); }
+let r3cache={key:'', list:[]};
+function r3list(){
+  const key = S.G ? S.G.room+'|'+S.G.created+'|'+words().length+'|'+words().map(w=>w.r3?1:0).join('') : '';
+  if(r3cache.key===key) return r3cache.list;
+  const ws=words(), sents=sentencesOf(S.G && S.G.set && S.G.set.passage);
+  const list = ws.map(w=>{
+    let sentence = w.r3 && w.r3.sentence, wrong = w.r3 && Array.isArray(w.r3.wrong) ? w.r3.wrong.filter(x=>x && x!==w.word) : null;
+    if(!sentence){ const s=sents.find(x=>x.includes(w.word)); if(!s) return null; sentence=s.replace(w.word,'___'); }
+    if(!sentence.includes('___')) return null;
+    if(!wrong || wrong.length<2) wrong = shuffled(ws.filter(x=>x.word!==w.word).map(x=>x.word), 'r3w|'+w.word).slice(0,3);
+    return {word:w.word, w, sentence, options:[w.word].concat(wrong.slice(0,3))};
+  }).filter(Boolean);
+  r3cache={key, list}; return list;
+}
 function plist(){ return S.G ? Object.entries(S.G.players||{}).map(([id,p])=>({id, ...p})).sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0)) : []; }
 function pcolor(id){ const i = plist().findIndex(p=>p.id===id); return 'var(--p'+((i<0?0:i)%4)+')'; }
 const isHost = () => S.role==='host';
@@ -182,12 +230,47 @@ function r1Options(q,ci){
   return shuffled(uniq, seedKey()+'|r1|'+q+'|'+ci);
 }
 function r2Options(q){ return shuffled(r2words()[q].r2.options, seedKey()+'|r2|'+q); }
+function r3Options(q){ return shuffled(r3list()[q].options, seedKey()+'|r3|'+q); }
 function getAns(p, round, q){ const m = p && p[round]; return m ? m[String(q)] : undefined; }
-function r1Pts(p,q){ const a=getAns(p,'r1',q); if(!a) return 0; return words()[q].chars.reduce((s,c,i)=>s+(a[i]===c.ch?1:0),0); }
-function r2Pts(p,q){ const a=getAns(p,'r2',q); if(!a) return 0; let s=0; for(const o of r2words()[q].r2.options){ if(a.includes(o.word)) s += o.same?1:-1; } return s; }
-function r2Max(q){ return r2words()[q].r2.options.filter(o=>o.same).length; }
-function totals(p){ let a=0,b=0; words().forEach((w,q)=>{ a+=r1Pts(p,q); }); r2words().forEach((w,q)=>{ b+=r2Pts(p,q); }); return {r1:a, r2:b, all:a+b}; }
-function maxTotals(){ let a=0,b=0; words().forEach(w=>a+=w.chars.length); r2words().forEach((w,q)=>b+=r2Max(q)); return {r1:a,r2:b,all:a+b}; }
+const kindLabel = k => k==='parent' ? '부모' : '아이';
+const kindBadge = p => `<span class="kind ${p.kind==='parent'?'parent':''}">${kindLabel(p.kind)}</span>`;
+
+/* ---------- scoring ---------- */
+function raw(p,round,q){
+  const a=getAns(p,round,q); if(!a) return {pts:0, full:false};
+  if(round==='r1'){ const cs=words()[q].chars; const n=cs.reduce((s,c,i)=>s+(a[i]===c.ch?1:0),0); return {pts:n, full:n===cs.length}; }
+  if(round==='r2'){ const opts=r2words()[q].r2.options; let s=0, hit=0, bad=0; for(const o of opts){ if(a.includes(o.word)){ if(o.same){ s++; hit++; } else { s--; bad++; } } } return {pts:s, full: bad===0 && hit===opts.filter(o=>o.same).length}; }
+  const ok = a[0]===r3list()[q].word; return {pts: ok?1:0, full: ok};
+}
+function qlist(){ return words().map((w,q)=>['r1',q]).concat(r2words().map((w,q)=>['r2',q]), r3list().map((x,q)=>['r3',q])); }
+function revealedCount(){
+  const G=S.G, n1=words().length, n2=r2words().length, n3=r3list().length, q=G.q;
+  switch(G.phase){
+    case 'r1': return q; case 'r1rev': return q+1; case 'mid': return n1;
+    case 'r2': return n1+q; case 'r2rev': return n1+q+1; case 'mid2': return n1+n2;
+    case 'r3': return n1+n2+q; case 'r3rev': return n1+n2+q+1; case 'end': return n1+n2+n3;
+    default: return 0;
+  }
+}
+function score(p, upto){
+  const k = p.kind==='parent' ? 0.5 : 1;
+  const out={r1:0, r2:0, r3:0, bonus:0, all:0, combo:0, last:null};
+  let combo=0;
+  for(const [round,q] of qlist().slice(0, upto==null?revealedCount():upto)){
+    const r=raw(p,round,q);
+    combo = r.full ? combo+1 : 0;
+    const pts = r.pts>0 ? r.pts*k : r.pts;
+    const bonus = (r.full && combo>=3) ? k : 0;
+    out[round]+=pts; out.bonus+=bonus; out.all+=pts+bonus;
+    out.last={round, q, pts, bonus, full:r.full, combo};
+  }
+  out.combo=combo; return out;
+}
+function ranked(upto){
+  const rows=plist().map(p=>({p, s:score(p,upto)})).sort((a,b)=>b.s.all-a.s.all || (a.p.joinedAt||0)-(b.p.joinedAt||0));
+  let rank=0, prev=null; rows.forEach((r,i)=>{ if(r.s.all!==prev){ rank=i+1; prev=r.s.all; } r.rank=rank; });
+  return rows;
+}
 
 /* ---------- sets ---------- */
 function validSet(s){ return s && typeof s.title==='string' && Array.isArray(s.words) && s.words.every(w=>w && w.word && Array.isArray(w.chars) && w.chars.every(c=>c.ch&&c.hun&&c.eum)); }
@@ -198,20 +281,77 @@ async function loadSets(){
   catch(e){ S.err='지문 목록(sets.json)을 불러오지 못했어요.'; }
   S.sets = base.map(s=>({...s, _src:'base'})).concat(importedSets().map(s=>({...s, _src:'imp'})));
   S.setsLoaded=true; render();
-  if(isHost()) refreshMeans();
+  if(isHost()) refreshFromSets();
 }
-/* copy the latest meanings into a room that was opened with an older copy of the passage */
-function refreshMeans(){
+/* copy the latest meanings and blank sentences into a room opened with an older copy of the passage */
+function refreshFromSets(){
   const G=S.G; if(!G || !G.set) return;
   const src=S.sets.find(s=>s.title===G.set.title); if(!src) return;
   let changed=false;
   for(const w of G.set.words||[]){
     const sw=(src.words||[]).find(x=>x.word===w.word); if(!sw) continue;
     if(sw.mean && w.mean!==sw.mean){ w.mean=sw.mean; changed=true; }
+    if(sw.r3 && JSON.stringify(sw.r3)!==JSON.stringify(w.r3) && !['r3','r3rev'].includes(G.phase)){ w.r3=sw.r3; changed=true; }
     const so=(sw.r2 && sw.r2.options)||[];
     for(const o of (w.r2 && w.r2.options)||[]){ const m=so.find(x=>x.word===o.word); if(m && m.mean && o.mean!==m.mean){ o.mean=m.mean; changed=true; } }
   }
   if(changed) commit();
+}
+
+/* ---------- sound & effects ---------- */
+let actx=null;
+function unlockAudio(){
+  try{ if(!actx){ const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C(); } if(actx && actx.state==='suspended') actx.resume(); }catch(e){}
+}
+function tones(freqs, type, gap){
+  if(!S.sound || !actx) return;
+  try{
+    const t0=actx.currentTime+0.02, d=gap||0.12;
+    freqs.forEach((f,i)=>{
+      const o=actx.createOscillator(), g=actx.createGain(), t=t0+i*d;
+      o.type=type||'sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.22,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.28);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.32);
+    });
+  }catch(e){}
+}
+function confetti(){
+  if(reduceMotion) return;
+  const cv=document.createElement('canvas'); cv.id='fx'; document.body.appendChild(cv);
+  const dpr=window.devicePixelRatio||1, W=innerWidth, H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement);
+  const cols=['--p0','--p1','--p2','--p3','--ok'].map(v=>cs.getPropertyValue(v).trim()||'#1f7a6b');
+  const ps=Array.from({length:90},()=>({x:W/2+(Math.random()-.5)*60, y:H*0.35, vx:(Math.random()-.5)*9, vy:-Math.random()*9-3, r:Math.random()*Math.PI, s:5+Math.random()*5, c:cols[Math.floor(Math.random()*cols.length)]}));
+  const start=performance.now();
+  (function frame(now){
+    const t=now-start; ctx.clearRect(0,0,W,H);
+    for(const p of ps){ p.vy+=0.28; p.x+=p.vx; p.y+=p.vy; p.r+=0.15; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.globalAlpha=Math.max(0,1-t/1600); ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2); ctx.restore(); }
+    if(t<1600) requestAnimationFrame(frame); else cv.remove();
+  })(start);
+}
+function animateRanks(){
+  if(reduceMotion) return;
+  const rows=[...app.querySelectorAll('.rb-row[data-prev]')]; if(!rows.length) return;
+  const h=rows[0].getBoundingClientRect().height;
+  rows.forEach(r=>{
+    const d=(+r.dataset.prev - +r.dataset.now)*h; if(!d || !r.animate) return;
+    r.animate([{transform:`translateY(${d}px)`},{transform:'translateY(0)'}],{duration:700, delay:350, easing:'cubic-bezier(.2,.8,.2,1)', fill:'backwards'});
+  });
+}
+function myResult(){
+  const me=S.G && S.G.players[pid]; if(!me) return null;
+  const s=score({...me, id:pid}); return s.last;
+}
+function runRevealFx(){
+  const r=myResult();
+  if(r){
+    const gain=r.pts+r.bonus;
+    if(r.full){ tones(r.bonus?[523,659,784,1047,1319]:[523,659,784,1047]); confetti(); }
+    else if(gain>0) tones([523,659]);
+    else tones([330,247],'triangle',0.16);
+  }
+  animateRanks();
 }
 
 /* ---------- networking (PeerJS) ---------- */
@@ -220,22 +360,17 @@ function peerOpts(){
   return h ? {host:h, port:+(params.get('peerport')||9000), path:'/', secure:false, debug:0} : {debug:0};
 }
 let peer=null, hostConn=null, retryT=null;
-const conns=new Map();   // host: DataConnection -> pid
+const conns=new Map();
 
-/* host side */
 function saveHost(){ if(isHost() && S.G) LS.set('hq_host', JSON.stringify(S.G)); }
 function hostOpen(G){
-  S.role='host'; S.G=G; refreshMeans(); saveHost(); S.status='방을 여는 중…'; render();
+  S.role='host'; S.G=G; refreshFromSets(); saveHost(); S.status='방을 여는 중…'; render();
   const id=PREFIX+G.room;
   const tryOpen=(attempt)=>{
     if(peer && !peer.destroyed) peer.destroy();
     peer=new Peer(id, peerOpts());
     peer.on('open',()=>{ S.status=''; render(); });
-    peer.on('connection', c=>{
-      c.on('data', d=>onHostData(c,d));
-      c.on('close',()=>onHostClose(c));
-      c.on('error',()=>onHostClose(c));
-    });
+    peer.on('connection', c=>{ c.on('data', d=>onHostData(c,d)); c.on('close',()=>onHostClose(c)); c.on('error',()=>onHostClose(c)); });
     peer.on('disconnected',()=>{ if(peer.destroyed||!isHost()) return; S.status='연결이 잠시 끊겨 다시 잇는 중…'; render(); setTimeout(()=>{ try{ if(!peer.destroyed) peer.reconnect(); }catch(e){} },1500); });
     peer.on('error', e=>{
       if(e.type==='unavailable-id'){
@@ -249,6 +384,7 @@ function hostOpen(G){
   };
   tryOpen(0);
 }
+function newPlayer(name, kind){ return {name, kind: kind==='parent'?'parent':'kid', joinedAt:Date.now(), read:false, r1:{}, r2:{}, r3:{}}; }
 function onHostData(c,d){
   if(!d || typeof d!=='object' || !S.G) return;
   const G=S.G;
@@ -259,8 +395,8 @@ function onHostData(c,d){
     if(!p){
       if(Object.keys(G.players).length>=MAXP){ c.send({t:'full'}); return; }
       if(G.phase!=='lobby'){ c.send({t:'started'}); return; }
-      p=G.players[id]={name, joinedAt:Date.now(), read:false, r1:{}, r2:{}};
-    } else p.name=name;
+      p=G.players[id]=newPlayer(name, d.kind);
+    } else { p.name=name; if(G.phase==='lobby' && d.kind) p.kind = d.kind==='parent'?'parent':'kid'; }
     conns.set(c,id); p.online=true; commit(); return;
   }
   const id=conns.get(c);
@@ -272,9 +408,12 @@ function onHostClose(c){
 }
 function applyAct(id,d){
   const G=S.G, p=G.players[id]; if(!p) return;
-  if(d.t==='read' && G.phase==='read') p.read=!!d.v;
+  p.r1=p.r1||{}; p.r2=p.r2||{}; p.r3=p.r3||{};
+  if(d.t==='kind' && G.phase==='lobby') p.kind = d.v==='parent'?'parent':'kid';
+  else if(d.t==='read' && G.phase==='read') p.read=!!d.v;
   else if(d.t==='r1' && G.phase==='r1' && d.q===G.q && Array.isArray(d.a) && !getAns(p,'r1',G.q)) p.r1[G.q]=d.a.map(String).slice(0,8);
   else if(d.t==='r2' && G.phase==='r2' && d.q===G.q && Array.isArray(d.a) && !getAns(p,'r2',G.q)) p.r2[G.q]=d.a.map(String).slice(0,12);
+  else if(d.t==='r3' && G.phase==='r3' && d.q===G.q && Array.isArray(d.a) && !getAns(p,'r3',G.q)) p.r3[G.q]=d.a.map(String).slice(0,1);
   else return;
   commit();
 }
@@ -283,11 +422,11 @@ function hostTick(){
   if(G.phase==='read' && ps.every(p=>p.read)){ G.phase='r1'; G.q=0; }
   else if(G.phase==='r1' && ps.every(p=>getAns(p,'r1',G.q))) G.phase='r1rev';
   else if(G.phase==='r2' && ps.every(p=>getAns(p,'r2',G.q))) G.phase='r2rev';
+  else if(G.phase==='r3' && ps.every(p=>getAns(p,'r3',G.q))) G.phase='r3rev';
 }
 function broadcast(msg){ const m=msg||{t:'state', g:S.G}; for(const c of conns.keys()){ try{ if(c.open) c.send(m); }catch(e){} } }
 function commit(){ hostTick(); saveHost(); broadcast(); render(); }
 
-/* player side */
 function playerConnect(){
   S.role='player'; LS.set('hq_room', S.code); S.status='진행자 폰에 연결하는 중…'; render();
   if(peer && !peer.destroyed && peer.open){ openConn(); return; }
@@ -308,7 +447,7 @@ function playerConnect(){
 function openConn(){
   if(hostConn){ try{ hostConn.close(); }catch(e){} }
   const c=peer.connect(PREFIX+S.code, {reliable:true}); hostConn=c;
-  c.on('open',()=>{ S.status=''; S.err=''; c.send({t:'join', pid, name:S.name}); render(); });
+  c.on('open',()=>{ S.status=''; S.err=''; c.send({t:'join', pid, name:S.name, kind:S.kind}); render(); });
   c.on('data', d=>{
     if(c!==hostConn || !d) return;
     if(d.t==='state'){ S.G=d.g; render(); }
@@ -320,10 +459,7 @@ function openConn(){
   c.on('close',()=>{ if(c!==hostConn || S.role!=='player') return; S.status='진행자 폰과 연결이 끊겼어요. 다시 연결 중…'; render(); scheduleRetry(); });
   c.on('error',()=>{});
 }
-function scheduleRetry(){
-  clearTimeout(retryT);
-  retryT=setTimeout(()=>{ if(S.role==='player' && !(hostConn && hostConn.open)) playerConnect(); },3000);
-}
+function scheduleRetry(){ clearTimeout(retryT); retryT=setTimeout(()=>{ if(S.role==='player' && !(hostConn && hostConn.open)) playerConnect(); },3000); }
 function leaveRoom(msg){
   clearTimeout(retryT);
   S.role=null; S.G=null; S.draft={}; LS.del('hq_room');
@@ -336,29 +472,38 @@ document.addEventListener('visibilitychange',()=>{
   if(S.role==='host' && peer && peer.disconnected && !peer.destroyed){ try{ peer.reconnect(); }catch(e){} }
 });
 
-/* one entry point for game actions: host applies locally, players send */
 function act(d){ if(isHost()) applyAct(pid,d); else if(hostConn && hostConn.open) hostConn.send(d); else toast('연결 중이에요. 잠시 후 다시 눌러 주세요.'); }
-function needName(){ const n=(S.name||'').trim(); if(!n){ S.err='먼저 이름을 적어 주세요.'; render(); return null; } return n.slice(0,12); }
+function needMe(){
+  const n=(S.name||'').trim();
+  if(!n){ S.err='먼저 이름을 적어 주세요.'; render(); return null; }
+  if(!S.kind){ S.err='아이인지 부모인지 골라 주세요.'; render(); return null; }
+  return n.slice(0,12);
+}
 
 /* ---------- actions ---------- */
 const A = {
+  setKind(k){
+    S.kind = k==='parent'?'parent':'kid'; LS.set('hq_kind', S.kind);
+    if(S.err==='아이인지 부모인지 골라 주세요.') S.err='';
+    if(S.G && S.G.phase==='lobby' && amIn()) act({t:'kind', v:S.kind}); else render();
+  },
   createRoom(i){
-    const name=needName(); if(!name) return;
+    const name=needMe(); if(!name) return;
     const set=S.sets[+i]; if(!set) return;
     const {_src, ...clean}=set;
     const room=String(1000+Math.floor(Math.random()*9000));
     S.err=''; S.draft={};
-    hostOpen({room, set:clean, phase:'lobby', q:0, hostPid:pid, created:Date.now(),
-      players:{[pid]:{name, joinedAt:Date.now(), read:false, r1:{}, r2:{}, online:true}}});
+    const me=newPlayer(name, S.kind); me.online=true;
+    hostOpen({room, set:clean, phase:'lobby', q:0, hostPid:pid, created:Date.now(), players:{[pid]:me}});
   },
   resumeHost(){ const G=jparse(LS.get('hq_host')); if(G && G.room){ S.err=''; hostOpen(G); } },
   join(){
-    const name=needName(); if(!name) return;
+    const name=needMe(); if(!name) return;
     S.code=(document.getElementById('code')?.value||S.code).replace(/\D/g,'').slice(0,4);
     if(S.code.length!==4){ S.err='방 번호 4자리를 적어 주세요.'; render(); return; }
     S.err=''; S.G=null; playerConnect();
   },
-  rejoin(){ S.code=LS.get('hq_room')||''; if(S.code && needName()){ S.err=''; playerConnect(); } },
+  rejoin(){ S.code=LS.get('hq_room')||''; if(S.code && needMe()){ S.err=''; playerConnect(); } },
   kick(id){ const G=S.G; delete G.players[id]; for(const [c,p] of conns){ if(p===id){ try{ c.send({t:'kicked'}); }catch(e){} conns.delete(c); setTimeout(()=>{ try{c.close()}catch(e){} },300); } } commit(); },
   start(){ S.G.phase='read'; S.G.q=0; commit(); },
   readDone(){ act({t:'read', v: !(S.G.players[pid]||{}).read}); },
@@ -367,15 +512,19 @@ const A = {
   submit1(){ const q=S.G.q, d=S.draft['r1|'+q]||[]; act({t:'r1', q, a: words()[q].chars.map((c,i)=>d[i]||'')}); },
   pick2(word){ const k='r2|'+S.G.q; const d=new Set(S.draft[k]||[]); d.has(word)?d.delete(word):d.add(word); S.draft[k]=[...d]; render(); },
   submit2(){ const q=S.G.q, d=S.draft['r2|'+q]||[]; act({t:'r2', q, a: d.length?d:['__none__']}); },
-  reveal(){ S.G.phase = S.G.phase==='r1'?'r1rev':'r2rev'; commit(); },
+  pick3(word){ S.draft['r3|'+S.G.q]=word; render(); },
+  submit3(){ const q=S.G.q, d=S.draft['r3|'+q]; if(d) act({t:'r3', q, a:[d]}); },
+  reveal(){ const G=S.G; G.phase = G.phase==='r1'?'r1rev' : G.phase==='r2'?'r2rev' : 'r3rev'; commit(); },
   next(){
     const G=S.G;
     if(G.phase==='r1rev'){ if(G.q+1<words().length){ G.phase='r1'; G.q++; } else { G.phase='mid'; G.q=0; } }
-    else if(G.phase==='mid'){ if(r2words().length){ G.phase='r2'; G.q=0; } else G.phase='end'; }
-    else if(G.phase==='r2rev'){ if(G.q+1<r2words().length){ G.phase='r2'; G.q++; } else G.phase='end'; }
+    else if(G.phase==='mid'){ if(r2words().length){ G.phase='r2'; G.q=0; } else { G.phase = r3list().length?'mid2':'end'; G.q=0; } }
+    else if(G.phase==='r2rev'){ if(G.q+1<r2words().length){ G.phase='r2'; G.q++; } else { G.phase = r3list().length?'mid2':'end'; G.q=0; } }
+    else if(G.phase==='mid2'){ G.phase='r3'; G.q=0; }
+    else if(G.phase==='r3rev'){ if(G.q+1<r3list().length){ G.phase='r3'; G.q++; } else G.phase='end'; }
     commit();
   },
-  again(){ const G=S.G; for(const p of Object.values(G.players)){ p.read=false; p.r1={}; p.r2={}; } G.phase='lobby'; G.q=0; G.created=Date.now(); S.draft={}; commit(); },
+  again(){ const G=S.G; for(const p of Object.values(G.players)){ p.read=false; p.r1={}; p.r2={}; p.r3={}; } G.phase='lobby'; G.q=0; G.created=Date.now(); S.draft={}; commit(); },
   closeRoom(){
     if(S.confirm?.act!=='closeRoom'){ S.confirm={act:'closeRoom', text:'방을 닫을까요? 참여한 폰들의 연결도 끊어져요.'}; render(); return; }
     S.confirm=null; broadcast({t:'closed'});
@@ -384,6 +533,7 @@ const A = {
   },
   leave(){ leaveRoom(''); },
   cancelConfirm(){ S.confirm=null; render(); },
+  toggleSound(){ S.sound=!S.sound; LS.set('hq_sound', S.sound?'on':'off'); if(S.sound){ unlockAudio(); tones([784]); } render(); },
   toggleImport(){ S.showImport=!S.showImport; render(); },
   doImport(){
     const j=jparse(S.importText.trim());
@@ -400,17 +550,32 @@ const A = {
 };
 
 /* ---------- views ---------- */
+const meanP = m => m ? `<p class="mean">뜻: ${esc(m)}</p>` : '';
+function dotsOf(ps){ return ps.map(p=>`<span class="dot" title="${esc(p.name)}" style="background:${pcolor(p.id)}"></span>`).join(''); }
 function chipStatus(done, label){
   return plist().map(p=>`<span class="chip ${done(p)?'done':''} ${p.online===false?'off':''}"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}${p.id===pid?' (나)':''} · ${p.online===false?'연결 끊김':(done(p)?label[0]:label[1])}</span>`).join('');
 }
 function confirmBox(){
   if(!S.confirm) return '';
-  return `<div class="card"><p>${esc(S.confirm.text)}</p><div class="row">
-    <button class="danger" data-act="${S.confirm.act}">네</button><button data-act="cancelConfirm">취소</button></div></div>`;
+  return `<div class="card"><p>${esc(S.confirm.text)}</p><div class="row"><button class="danger" data-act="${S.confirm.act}">네</button><button data-act="cancelConfirm">취소</button></div></div>`;
+}
+function kindPicker(){
+  return `<div><span class="lbl">나는</span><div class="seg" role="group" aria-label="아이 또는 부모">
+    <button id="kind-kid" class="${S.kind==='kid'?'on':''}" data-act="setKind" data-arg="kid" aria-pressed="${S.kind==='kid'}">아이</button>
+    <button id="kind-parent" class="${S.kind==='parent'?'on':''}" data-act="setKind" data-arg="parent" aria-pressed="${S.kind==='parent'}">부모</button></div>
+    <p class="small muted" style="margin-top:6px">부모는 얻는 점수가 절반이에요. 감점은 그대로예요.</p></div>`;
 }
 function nameField(){
   return `<div><label class="lbl" for="myname">내 이름</label>
-    <input type="text" id="myname" data-bind="name" maxlength="12" placeholder="예: 서연" value="${esc(S.name)}" autocomplete="off"></div>`;
+    <input type="text" id="myname" data-bind="name" maxlength="12" placeholder="예: 서연" value="${esc(S.name)}" autocomplete="off"></div>${kindPicker()}`;
+}
+function rulesCard(){
+  return `<section class="card"><h3>점수 규칙</h3><ul class="small" style="margin:0;padding-left:1.1rem">
+    <li>1차 훈음: 맞힌 글자마다 +1 (틀려도 0)</li>
+    <li>2차 같은 한자: 같은 한자 +1, 다른 한자 −1</li>
+    <li>3차 빈칸: 맞히면 +1</li>
+    <li>콤보: 3문제 이상 연속으로 완벽히 맞히면 문제마다 보너스 +1</li>
+    <li>부모: 얻는 점수(보너스 포함)는 절반, 감점은 그대로</li></ul></section>`;
 }
 function viewHome(){
   let h=`<section class="card"><h1>지문 읽고 한자어 맞히기</h1>
@@ -452,17 +617,16 @@ function viewLobby(){
   h+=`<section class="card"><span class="pill" style="align-self:flex-start">대기실 · 방 ${esc(G.room)}</span><h1>${esc(G.set?.title)}</h1><div class="slots">`;
   for(let i=0;i<MAXP;i++){
     const p=ps[i];
-    h+= p ? `<div class="slot filled ${p.online===false?'off':''}"><span class="row"><span class="dot" style="background:var(--p${i})"></span>${esc(p.name)}${p.id===pid?' (나)':''}${p.id===G.hostPid?' <span class="pill">진행</span>':''}</span>
+    h+= p ? `<div class="slot filled ${p.online===false?'off':''}"><span class="row"><span class="dot" style="background:var(--p${i})"></span>${esc(p.name)}${p.id===pid?' (나)':''} ${kindBadge(p)}${p.id===G.hostPid?' <span class="pill">진행</span>':''}</span>
       ${isHost()&&p.id!==pid?`<button class="link" data-act="kick" data-arg="${esc(p.id)}">빼기</button>`:''}</div>`
       : `<div class="slot muted small">빈 자리</div>`;
   }
-  h+=`</div>`;
+  h+=`</div>${kindPicker()}`;
   if(!isHost()) h+=`<p class="note">진행자가 시작하면 바로 지문이 나와요.</p>`;
-  h+=`</section>`;
+  h+=`</section>`+rulesCard();
   h+=hostBar(`<button class="primary big" data-act="start" ${ps.length?'':'disabled'}>시작하기 (${ps.length}명)</button>`);
   return h;
 }
-const meanP = m => m ? `<p class="mean">뜻: ${esc(m)}</p>` : '';
 function highlight(text, ws){
   const list=[...new Set(ws.map(w=>w.word).filter(Boolean))].sort((a,b)=>b.length-a.length);
   const safe=esc(text); if(!list.length) return safe;
@@ -478,15 +642,49 @@ function viewRead(){
     <div class="row">${chipStatus(p=>p.read,['다 읽음','읽는 중'])}</div>
     ${hostBar(`<p class="small">모두 다 읽으면 1차 퀴즈가 자동으로 시작돼요.</p><button data-act="forceR1">기다리지 않고 1차 시작</button>`)}`;
 }
+function comboChip(){
+  const me=S.G.players[pid]; if(!me) return '';
+  const c=score({...me,id:pid}).combo;
+  return c>=1 ? `<span class="combo">콤보 ${c}${c>=2?' · 다음도 맞히면 '+(c+1>=3?'보너스!':'콤보 3'):''}</span>` : '';
+}
 function qHead(label,q,n){
   return `<div class="qhead"><span class="pill">${label}</span><span class="small muted" style="font-variant-numeric:tabular-nums">${q+1} / ${n}</span></div>
     <div class="progress"><i style="width:${Math.round((q+1)/n*100)}%"></i></div>`;
+}
+function banner(){
+  const r=myResult(); if(!r) return '';
+  const gain=r.pts+r.bonus;
+  const cls = r.full ? 'great' : gain>0 ? 'good' : gain<0 ? 'minus' : 'zero';
+  const head = r.full ? '완벽해요!' : gain>0 ? '좋아요!' : gain<0 ? '앗, 감점!' : '아쉬워요';
+  const sub = [];
+  if(r.combo>=2) sub.push(`콤보 ×${r.combo}`);
+  if(r.bonus) sub.push(`보너스 ${signed(r.bonus)}`);
+  if(S.G.players[pid].kind==='parent' && gain>0) sub.push('부모 점수 절반');
+  return `<div class="banner ${cls} anim" role="status">${head} ${signed(gain)}점${sub.length?`<small>${esc(sub.join(' · '))}</small>`:''}</div>`;
+}
+function resultBoard(){
+  const n=revealedCount(), now=ranked(n), before=ranked(Math.max(0,n-1));
+  const prevIdx={}; before.forEach((r,i)=>prevIdx[r.p.id]=i);
+  const prevRank={}; before.forEach(r=>prevRank[r.p.id]=r.rank);
+  let h=`<section class="card"><div class="rb"><div class="rb-row head"><span>순위</span><span>이름</span><span class="gain">이번</span><span class="tot">합계</span></div>`;
+  now.forEach((r,i)=>{
+    const l=r.s.last, gain=l?l.pts+l.bonus:0, up=(prevRank[r.p.id]||r.rank)-r.rank;
+    h+=`<div class="rb-row" data-prev="${prevIdx[r.p.id]??i}" data-now="${i}"><span class="rank">${r.rank}</span>
+      <span class="row" style="gap:6px"><span class="dot" style="background:${pcolor(r.p.id)}"></span>${esc(r.p.name)}${r.p.id===pid?' (나)':''} ${kindBadge(r.p)}${up>0?`<span class="up">▲${up}</span>`:''}${l&&l.combo>=3?`<span class="combo" style="font-size:.85rem">콤보${l.combo}</span>`:''}</span>
+      <span class="gain">${signed(gain)}</span><span class="tot">${fmt(r.s.all)}</span></div>`;
+  });
+  return h+`</div></section>`;
+}
+function nextBar(lastLabel, isLast){
+  let h=hostBar(`<button class="primary big" data-act="next">${isLast?lastLabel:'다음 문제'}</button>`);
+  if(!isHost()) h+=`<p class="muted small" style="text-align:center">진행자가 다음으로 넘기면 바뀌어요.</p>`;
+  return h;
 }
 function viewR1(){
   const G=S.G, q=G.q, w=words()[q], me=G.players[pid];
   const done=getAns(me,'r1',q); const d=done || S.draft['r1|'+q] || [];
   let h=`<section class="card">${qHead('1차 · 훈음 맞히기', q, words().length)}
-    <div class="bigword">${esc(w.word)}</div><p class="muted" style="text-align:center">각 글자의 뜻(훈)과 소리(음)를 고르세요.</p></section>`;
+    <div class="bigword">${esc(w.word)}</div><p class="muted" style="text-align:center">각 글자의 뜻(훈)과 소리(음)를 고르세요.</p>${comboChip()?`<p style="text-align:center">${comboChip()}</p>`:''}</section>`;
   w.chars.forEach((c,ci)=>{
     h+=`<section class="card charblock"><div class="charlabel"><b>${esc(c.eum)}</b><span class="muted">「${esc(w.word)}」의 ${ci+1}번째 글자</span></div><div class="opts">`;
     for(const o of r1Options(q,ci)) h+=`<button class="opt ${d[ci]===o.ch?'sel':''}" data-act="pick1" data-arg="${q}|${ci}|${esc(o.ch)}" ${done?'disabled':''}>${esc(o.hun)} ${esc(o.eum)}</button>`;
@@ -498,39 +696,29 @@ function viewR1(){
 }
 function viewR1Rev(){
   const G=S.G, q=G.q, w=words()[q], ps=plist();
-  let h=`<section class="card">${qHead('1차 · 정답', q, words().length)}
+  let h=banner()+`<section class="card">${qHead('1차 · 정답', q, words().length)}
     <div class="bighanja">${w.chars.map(c=>esc(c.ch)).join('')}</div><div class="bigword" style="font-size:2rem">${esc(w.word)}</div>
     <p style="text-align:center">${w.chars.map(c=>`<span class="hanja">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}`).join(' · ')}</p>${meanP(w.mean)}</section>`;
   w.chars.forEach((c,ci)=>{
     h+=`<section class="card charblock"><div class="charlabel"><b>${esc(c.eum)}</b><span class="muted">고른 사람</span></div><div class="opts">`;
     for(const o of r1Options(q,ci)){
       const who=ps.filter(p=>(getAns(p,'r1',q)||[])[ci]===o.ch), right=o.ch===c.ch;
-      h+=`<div class="opt btn ${right?'right':(who.length?'wrong':'')}"><span class="hz">${esc(o.ch)}</span>${esc(o.hun)} ${esc(o.eum)}
-        <span class="who">${who.map(p=>`<span class="dot" title="${esc(p.name)}" style="background:${pcolor(p.id)}"></span>`).join('')}</span></div>`;
+      h+=`<div class="opt btn ${right?'right':(who.length?'wrong':'')}"><span class="hz">${esc(o.ch)}</span>${esc(o.hun)} ${esc(o.eum)}<span class="who">${dotsOf(who)}</span></div>`;
     }
     h+=`</div></section>`;
   });
-  h+=`<section class="card"><table><thead><tr><th>이름</th>${w.chars.map(c=>`<th>${esc(c.eum)}</th>`).join('')}<th class="num">이번</th><th class="num">합계</th></tr></thead><tbody>`;
-  for(const p of ps){ const a=getAns(p,'r1',q)||[];
-    h+=`<tr><td><span class="row"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}</span></td>${w.chars.map((c,i)=>a[i]===c.ch?'<td class="mk-o">O</td>':'<td class="mk-x">X</td>').join('')}<td class="num">${r1Pts(p,q)}</td><td class="num">${totals(p).all}</td></tr>`; }
-  h+=`</tbody></table></section>`;
-  h+=hostBar(`<button class="primary big" data-act="next">${q+1>=words().length?'1차 결과 보기':'다음 문제'}</button>`);
-  if(!isHost()) h+=`<p class="muted small" style="text-align:center">진행자가 다음으로 넘기면 바뀌어요.</p>`;
-  return h;
+  return h+resultBoard()+nextBar('1차 결과 보기', q+1>=words().length);
 }
-function scoreTable(final){
-  const ps=plist().map(p=>({...p, t:totals(p)})).sort((a,b)=>(final?b.t.all-a.t.all:b.t.r1-a.t.r1)); const mx=maxTotals();
-  let h=`<table><thead><tr><th></th><th>이름</th><th class="num">1차</th>${final?'<th class="num">2차</th><th class="num">합계</th>':''}</tr></thead><tbody>`;
-  let rank=0, prev=null;
-  ps.forEach((p,i)=>{ const v=final?p.t.all:p.t.r1; if(v!==prev){ rank=i+1; prev=v; }
-    h+=`<tr><td class="rank">${rank}</td><td><span class="row"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}${p.id===pid?' (나)':''}</span></td>
-    <td class="num">${p.t.r1}/${mx.r1}</td>${final?`<td class="num">${p.t.r2}/${mx.r2}</td><td class="num"><b>${p.t.all}</b></td>`:''}</tr>`; });
-  return h+`</tbody></table>`;
+function midBoard(title, pill){
+  return `<section class="card"><span class="pill" style="align-self:flex-start">${pill}</span><h1>${title}</h1></section>${resultBoard()}`;
 }
 function viewMid(){
-  return `<section class="card"><span class="pill" style="align-self:flex-start">1차 끝</span><h1>1차 결과</h1>${scoreTable(false)}</section>
-    <section class="card"><h2>2차 퀴즈 안내</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 같은 한자를 고르면 +1점, 다른 한자를 고르면 −1점이에요(고른 보기가 틀리면 점수가 마이너스가 될 수도 있어요).</p></section>
-    ${hostBar(`<button class="primary big" data-act="next">${r2words().length?'2차 퀴즈 시작':'최종 결과 보기'}</button>`)}`;
+  return midBoard('1차 결과','1차 끝')+`<section class="card"><h2>2차 · 같은 한자 찾기</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 같은 한자를 고르면 +1점, 다른 한자를 고르면 −1점이에요.</p></section>
+    ${hostBar(`<button class="primary big" data-act="next">${r2words().length?'2차 퀴즈 시작':(r3list().length?'다음으로':'최종 결과 보기')}</button>`)}`;
+}
+function viewMid2(){
+  return midBoard('2차까지 결과','2차 끝')+`<section class="card"><h2>3차 · 문맥 빈칸</h2><p>지문 속 문장에서 빈칸에 들어갈 한자어를 고르세요. 맞히면 +1점이에요.</p></section>
+    ${hostBar(`<button class="primary big" data-act="next">3차 퀴즈 시작</button>`)}`;
 }
 function viewR2(){
   const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], me=G.players[pid];
@@ -538,7 +726,7 @@ function viewR2(){
   let h=`<section class="card">${qHead('2차 · 같은 한자 찾기', q, r2words().length)}
     <div class="bigword" style="font-size:2.2rem">${esc(w.word)}</div>
     <p style="text-align:center">기준 글자: <span class="hanja" style="font-size:1.5rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>
-    <p class="muted" style="text-align:center">「${esc(c.eum)}」에 이 한자를 쓰는 단어를 모두 고르세요.</p></section><section class="card"><div class="opts">`;
+    <p class="muted" style="text-align:center">「${esc(c.eum)}」에 이 한자를 쓰는 단어를 모두 고르세요.</p>${comboChip()?`<p style="text-align:center">${comboChip()}</p>`:''}</section><section class="card"><div class="opts">`;
   for(const o of r2Options(q)) h+=`<button class="opt ${d.includes(o.word)?'sel':''}" data-act="pick2" data-arg="${esc(o.word)}" aria-pressed="${d.includes(o.word)}" ${done?'disabled':''}>${esc(o.word)}</button>`;
   h+=`</div></section>`;
   h+= !done ? `<button class="primary big" data-act="submit2">${d.length?d.length+'개 골라서 제출':'하나도 없다고 제출'}</button>` : `<p class="note">제출했어요. 친구들을 기다리는 중…</p>`;
@@ -547,52 +735,90 @@ function viewR2(){
 }
 function viewR2Rev(){
   const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], ps=plist();
-  let h=`<section class="card">${qHead('2차 · 정답', q, r2words().length)}
+  let h=banner()+`<section class="card">${qHead('2차 · 정답', q, r2words().length)}
     <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
   for(const o of r2Options(q)){
     const who=ps.filter(p=>(getAns(p,'r2',q)||[]).includes(o.word));
-    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>${o.mean?`<span class="omean">${esc(o.mean)}</span>`:''}
-      <span class="who">${who.map(p=>`<span class="dot" title="${esc(p.name)}" style="background:${pcolor(p.id)}"></span>`).join('')}</span></div>`;
+    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>${o.mean?`<span class="omean">${esc(o.mean)}</span>`:''}<span class="who">${dotsOf(who)}</span></div>`;
   }
-  h+=`</div><p class="small muted">점 색깔은 그 보기를 고른 사람이에요.</p></section>
-    <section class="card"><table><thead><tr><th>이름</th><th class="num">이번</th><th class="num">합계</th></tr></thead><tbody>`;
-  for(const p of ps) h+=`<tr><td><span class="row"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}</span></td><td class="num">${r2Pts(p,q)}/${r2Max(q)}</td><td class="num">${totals(p).all}</td></tr>`;
-  h+=`</tbody></table></section>`;
-  h+=hostBar(`<button class="primary big" data-act="next">${q+1>=r2words().length?'최종 결과 보기':'다음 문제'}</button>`);
-  if(!isHost()) h+=`<p class="muted small" style="text-align:center">진행자가 다음으로 넘기면 바뀌어요.</p>`;
-  return h;
+  h+=`</div><p class="small muted">점 색깔은 그 보기를 고른 사람이에요.</p></section>`;
+  return h+resultBoard()+nextBar(r3list().length?'2차 결과 보기':'최종 결과 보기', q+1>=r2words().length);
+}
+function blankSentence(s, fill){
+  const parts=String(s).split('___');
+  const mid = fill ? `<mark>${esc(fill)}</mark>` : `<span class="blank" aria-label="빈칸">?</span>`;
+  return parts.map(esc).join(mid);
+}
+function viewR3(){
+  const G=S.G, q=G.q, it=r3list()[q], me=G.players[pid];
+  const done=getAns(me,'r3',q); const d=(done&&done[0]) || S.draft['r3|'+q] || '';
+  let h=`<section class="card">${qHead('3차 · 문맥 빈칸', q, r3list().length)}
+    <p class="sentence">${blankSentence(it.sentence)}</p><p class="muted small">빈칸에 들어갈 한자어를 고르세요.</p>${comboChip()?`<p>${comboChip()}</p>`:''}</section><section class="card"><div class="opts">`;
+  for(const o of r3Options(q)) h+=`<button class="opt ${d===o?'sel':''}" data-act="pick3" data-arg="${esc(o)}" ${done?'disabled':''}>${esc(o)}</button>`;
+  h+=`</div></section>`;
+  h+= !done ? `<button class="primary big" data-act="submit3" ${d?'':'disabled'}>제출하기</button>` : `<p class="note">제출했어요. 친구들을 기다리는 중…</p>`;
+  h+=`<div class="row">${chipStatus(p=>!!getAns(p,'r3',q),['제출','생각 중'])}</div>`;
+  return h+hostBar(`<p class="small">모두 제출하면 정답이 자동으로 공개돼요.</p><button data-act="reveal">기다리지 않고 정답 공개</button>`);
+}
+function viewR3Rev(){
+  const G=S.G, q=G.q, it=r3list()[q], w=it.w, ps=plist();
+  let h=banner()+`<section class="card">${qHead('3차 · 정답', q, r3list().length)}
+    <p class="sentence">${blankSentence(it.sentence, it.word)}</p>
+    <p style="text-align:center"><b>${esc(w.word)}</b> <span class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</span></p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
+  for(const o of r3Options(q)){
+    const who=ps.filter(p=>(getAns(p,'r3',q)||[])[0]===o);
+    h+=`<div class="opt btn ${o===it.word?'right':(who.length?'wrong':'')}">${esc(o)}<span class="who">${dotsOf(who)}</span></div>`;
+  }
+  h+=`</div></section>`;
+  return h+resultBoard()+nextBar('최종 결과 보기', q+1>=r3list().length);
 }
 function viewEnd(){
-  return `<section class="card"><span class="pill" style="align-self:flex-start">끝</span><h1>최종 결과</h1>${scoreTable(true)}</section>
-    <section class="card"><h2>오늘 배운 한자어</h2><table><tbody>${words().map(w=>`<tr><td><b>${esc(w.word)}</b></td><td class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</td><td class="small">${w.chars.map(c=>esc(c.hun)+' '+esc(c.eum)).join(', ')}${w.mean?'<br><span class="muted">'+esc(w.mean)+'</span>':''}</td></tr>`).join('')}</tbody></table></section>
+  const rows=ranked();
+  let t=`<table class="endtable"><thead><tr><th></th><th>이름</th><th class="num">1차</th><th class="num">2차</th><th class="num">3차</th><th class="num">보너스</th><th class="num">합계</th></tr></thead><tbody>`;
+  for(const r of rows) t+=`<tr><td class="rank">${r.rank}</td><td><span class="row" style="gap:4px"><span class="dot" style="background:${pcolor(r.p.id)}"></span>${esc(r.p.name)} ${kindBadge(r.p)}</span></td>
+    <td class="num">${fmt(r.s.r1)}</td><td class="num">${fmt(r.s.r2)}</td><td class="num">${fmt(r.s.r3)}</td><td class="num">${fmt(r.s.bonus)}</td><td class="num"><b>${fmt(r.s.all)}</b></td></tr>`;
+  t+=`</tbody></table>`;
+  return `<section class="card"><span class="pill" style="align-self:flex-start">끝</span><h1>최종 결과</h1><div style="overflow-x:auto">${t}</div></section>
+    <section class="card"><h2>오늘 배운 한자어</h2><table class="learned"><tbody>${words().map(w=>`<tr><td><b>${esc(w.word)}</b></td><td class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</td><td class="small">${w.chars.map(c=>esc(c.hun)+' '+esc(c.eum)).join(', ')}${w.mean?'<br><span class="muted">'+esc(w.mean)+'</span>':''}</td></tr>`).join('')}</tbody></table></section>
     ${hostBar(`<button class="primary big" data-act="again">같은 지문으로 다시 하기</button>`)}`;
 }
 function viewGame(){
   const ph=S.G.phase;
-  const body = ph==='lobby'?viewLobby() : ph==='read'?viewRead() : ph==='r1'?viewR1() : ph==='r1rev'?viewR1Rev() : ph==='mid'?viewMid() : ph==='r2'?viewR2() : ph==='r2rev'?viewR2Rev() : viewEnd();
-  const foot = isHost() ? `${confirmBox()}<button class="link" data-act="closeRoom">방 닫기</button>` : `<button class="link" data-act="leave">방에서 나가기</button>`;
+  const V={lobby:viewLobby, read:viewRead, r1:viewR1, r1rev:viewR1Rev, mid:viewMid, r2:viewR2, r2rev:viewR2Rev, mid2:viewMid2, r3:viewR3, r3rev:viewR3Rev, end:viewEnd};
+  const body=(V[ph]||viewEnd)();
+  const foot = `<div class="row between"><button class="link" data-act="toggleSound">${S.sound?'소리 끄기':'소리 켜기'}</button>` +
+    (isHost() ? `<button class="link" data-act="closeRoom">방 닫기</button></div>${confirmBox()}` : `<button class="link" data-act="leave">방에서 나가기</button></div>`);
   return body+foot;
 }
 
-/* ---------- render (keeps focus) ---------- */
+/* ---------- render ---------- */
 let lastHTML='';
+const REV={r1rev:1, r2rev:1, r3rev:1};
 function render(){
   let h='';
   if(S.status) h+=`<div class="status" role="status"><span class="spinner"></span> ${esc(S.status)}</div>`;
   if(S.err) h+=`<div class="err" role="alert">${esc(S.err)}</div>`;
-  if(S.role && S.G && (isHost() || amIn())) h+=viewGame();
+  const inGame = S.role && S.G && (isHost() || amIn());
+  if(inGame) h+=viewGame();
   else if(S.role==='player') h+=`<div class="card"><p class="muted">방 ${esc(S.code)}에 들어가는 중…</p><button class="link" data-act="leave">취소</button></div>`;
   else if(S.role==='host') h+=`<div class="card"><p class="muted">방을 준비하는 중…</p></div>`;
   else h+=viewHome();
-  meEl.textContent = S.name ? S.name+(isHost()?' · 진행자':'') : '';
-  if(h===lastHTML) return; lastHTML=h;
+  meEl.textContent = S.name ? S.name+(S.kind?' · '+kindLabel(S.kind):'')+(isHost()?' · 진행자':'') : '';
+  const fxKey = inGame && REV[S.G.phase] ? S.G.room+'|'+S.G.created+'|'+S.G.phase+'|'+S.G.q : '';
+  const newFx = fxKey && fxKey!==S.fxKey; S.fxKey = fxKey || S.fxKey;
+  if(h===lastHTML && !newFx) return; lastHTML=h;
   const ae=document.activeElement, fid=ae && ae.id, ss=ae && ae.selectionStart, se=ae && ae.selectionEnd;
+  const phaseKey = inGame ? S.G.phase+'|'+S.G.q : '';
   app.innerHTML=h;
-  if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); try{ if(ss!=null) el.setSelectionRange(ss,se); }catch(e){} } }
+  if(phaseKey && phaseKey!==render.lastPhase){ window.scrollTo({top:0}); }
+  render.lastPhase=phaseKey;
+  if(fid){ const el=document.getElementById(fid); if(el && el.tagName!=='BUTTON'){ el.focus({preventScroll:true}); try{ if(ss!=null) el.setSelectionRange(ss,se); }catch(e){} } }
+  if(newFx) runRevealFx();
 }
 
 /* ---------- events ---------- */
 app.addEventListener('click', e=>{
+  unlockAudio();
   const b=e.target.closest('[data-act]'); if(!b || b.disabled) return;
   const f=A[b.dataset.act]; if(f) f(b.dataset.arg);
 });
@@ -607,7 +833,6 @@ app.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.id==='code')
 if(typeof Peer==='undefined') S.err='연결 모듈을 불러오지 못했어요. 페이지를 새로 고쳐 주세요.';
 render();
 loadSets();
-if(S.code && S.name && !LS.get('hq_host')) { /* came from QR with a saved name: show home with code filled, one tap to join */ }
 })();
 </script>
 </body>
