@@ -111,6 +111,8 @@ td.num,th.num{text-align:right}
 @media (prefers-reduced-motion: reduce){.spinner{animation:none}}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.9rem;display:none;z-index:10;max-width:90vw}
 @media (max-width:400px){ .bigword{font-size:2.4rem} .r2row{grid-template-columns:1fr 1fr} }
+.mean{text-align:center;color:var(--muted);font-size:.95rem}
+.omean{display:block;font-size:.8rem;color:var(--muted);margin-top:4px;line-height:1.35;font-weight:400}
 </style>
 <style>
 .roomcode{font-family:var(--display);font-size:3.2rem;letter-spacing:.25em;text-align:center;color:var(--accent);line-height:1}
@@ -182,7 +184,7 @@ function r1Options(q,ci){
 function r2Options(q){ return shuffled(r2words()[q].r2.options, seedKey()+'|r2|'+q); }
 function getAns(p, round, q){ const m = p && p[round]; return m ? m[String(q)] : undefined; }
 function r1Pts(p,q){ const a=getAns(p,'r1',q); if(!a) return 0; return words()[q].chars.reduce((s,c,i)=>s+(a[i]===c.ch?1:0),0); }
-function r2Pts(p,q){ const a=getAns(p,'r2',q); if(!a) return 0; let s=0; for(const o of r2words()[q].r2.options){ if(a.includes(o.word)) s += o.same?1:-1; } return Math.max(0,s); }
+function r2Pts(p,q){ const a=getAns(p,'r2',q); if(!a) return 0; let s=0; for(const o of r2words()[q].r2.options){ if(a.includes(o.word)) s += o.same?1:-1; } return s; }
 function r2Max(q){ return r2words()[q].r2.options.filter(o=>o.same).length; }
 function totals(p){ let a=0,b=0; words().forEach((w,q)=>{ a+=r1Pts(p,q); }); r2words().forEach((w,q)=>{ b+=r2Pts(p,q); }); return {r1:a, r2:b, all:a+b}; }
 function maxTotals(){ let a=0,b=0; words().forEach(w=>a+=w.chars.length); r2words().forEach((w,q)=>b+=r2Max(q)); return {r1:a,r2:b,all:a+b}; }
@@ -446,6 +448,7 @@ function viewLobby(){
   h+=hostBar(`<button class="primary big" data-act="start" ${ps.length?'':'disabled'}>시작하기 (${ps.length}명)</button>`);
   return h;
 }
+const meanP = m => m ? `<p class="mean">뜻: ${esc(m)}</p>` : '';
 function highlight(text, ws){
   const list=[...new Set(ws.map(w=>w.word).filter(Boolean))].sort((a,b)=>b.length-a.length);
   const safe=esc(text); if(!list.length) return safe;
@@ -483,7 +486,7 @@ function viewR1Rev(){
   const G=S.G, q=G.q, w=words()[q], ps=plist();
   let h=`<section class="card">${qHead('1차 · 정답', q, words().length)}
     <div class="bighanja">${w.chars.map(c=>esc(c.ch)).join('')}</div><div class="bigword" style="font-size:2rem">${esc(w.word)}</div>
-    <p style="text-align:center">${w.chars.map(c=>`<span class="hanja">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}`).join(' · ')}</p></section>`;
+    <p style="text-align:center">${w.chars.map(c=>`<span class="hanja">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}`).join(' · ')}</p>${meanP(w.mean)}</section>`;
   w.chars.forEach((c,ci)=>{
     h+=`<section class="card charblock"><div class="charlabel"><b>${esc(c.eum)}</b><span class="muted">고른 사람</span></div><div class="opts">`;
     for(const o of r1Options(q,ci)){
@@ -512,7 +515,7 @@ function scoreTable(final){
 }
 function viewMid(){
   return `<section class="card"><span class="pill" style="align-self:flex-start">1차 끝</span><h1>1차 결과</h1>${scoreTable(false)}</section>
-    <section class="card"><h2>2차 퀴즈 안내</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 맞게 고르면 +1점, 잘못 고르면 −1점이에요(문제마다 0점 아래로는 안 내려가요).</p></section>
+    <section class="card"><h2>2차 퀴즈 안내</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 같은 한자를 고르면 +1점, 다른 한자를 고르면 −1점이에요(고른 보기가 틀리면 점수가 마이너스가 될 수도 있어요).</p></section>
     ${hostBar(`<button class="primary big" data-act="next">${r2words().length?'2차 퀴즈 시작':'최종 결과 보기'}</button>`)}`;
 }
 function viewR2(){
@@ -531,10 +534,10 @@ function viewR2(){
 function viewR2Rev(){
   const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], ps=plist();
   let h=`<section class="card">${qHead('2차 · 정답', q, r2words().length)}
-    <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p></section><section class="card"><div class="opts">`;
+    <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
   for(const o of r2Options(q)){
     const who=ps.filter(p=>(getAns(p,'r2',q)||[]).includes(o.word));
-    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>
+    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>${o.mean?`<span class="omean">${esc(o.mean)}</span>`:''}
       <span class="who">${who.map(p=>`<span class="dot" title="${esc(p.name)}" style="background:${pcolor(p.id)}"></span>`).join('')}</span></div>`;
   }
   h+=`</div><p class="small muted">점 색깔은 그 보기를 고른 사람이에요.</p></section>
@@ -547,7 +550,7 @@ function viewR2Rev(){
 }
 function viewEnd(){
   return `<section class="card"><span class="pill" style="align-self:flex-start">끝</span><h1>최종 결과</h1>${scoreTable(true)}</section>
-    <section class="card"><h2>오늘 배운 한자어</h2><table><tbody>${words().map(w=>`<tr><td><b>${esc(w.word)}</b></td><td class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</td><td class="small">${w.chars.map(c=>esc(c.hun)+' '+esc(c.eum)).join(', ')}</td></tr>`).join('')}</tbody></table></section>
+    <section class="card"><h2>오늘 배운 한자어</h2><table><tbody>${words().map(w=>`<tr><td><b>${esc(w.word)}</b></td><td class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</td><td class="small">${w.chars.map(c=>esc(c.hun)+' '+esc(c.eum)).join(', ')}${w.mean?'<br><span class="muted">'+esc(w.mean)+'</span>':''}</td></tr>`).join('')}</tbody></table></section>
     ${hostBar(`<button class="primary big" data-act="again">같은 지문으로 다시 하기</button>`)}`;
 }
 function viewGame(){

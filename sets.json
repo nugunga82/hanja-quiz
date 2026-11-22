@@ -58,35 +58,42 @@
        {
         "word": "착륙",
         "hanja": "着陸",
-        "same": true
+        "same": true,
+        "mean": "비행기 따위가 땅에 내려앉음"
        },
        {
         "word": "정착",
         "hanja": "定着",
-        "same": true
+        "same": true,
+        "mean": "한곳에 자리를 잡고 머물러 삶"
        },
        {
         "word": "부착",
         "hanja": "附着",
-        "same": true
+        "same": true,
+        "mean": "떨어지지 않게 붙음, 또는 붙임"
        },
        {
         "word": "착각",
         "hanja": "錯覺",
-        "same": false
+        "same": false,
+        "mean": "실제와 다르게 잘못 생각하거나 느낌"
        },
        {
         "word": "착오",
         "hanja": "錯誤",
-        "same": false
+        "same": false,
+        "mean": "착각으로 생긴 잘못"
        },
        {
         "word": "착취",
         "hanja": "搾取",
-        "same": false
+        "same": false,
+        "mean": "남이 일한 대가를 부당하게 빼앗음"
        }
       ]
-     }
+     },
+     "mean": "목적한 곳에 다다름"
     },
     {
      "word": "신하",
@@ -142,35 +149,42 @@
        {
         "word": "지하",
         "hanja": "地下",
-        "same": true
+        "same": true,
+        "mean": "땅속, 땅 아래"
        },
        {
         "word": "하교",
         "hanja": "下校",
-        "same": true
+        "same": true,
+        "mean": "공부를 마치고 학교에서 집으로 돌아옴"
        },
        {
         "word": "하산",
         "hanja": "下山",
-        "same": true
+        "same": true,
+        "mean": "산에서 내려옴"
        },
        {
         "word": "상하",
         "hanja": "上下",
-        "same": true
+        "same": true,
+        "mean": "위와 아래"
        },
        {
         "word": "하천",
         "hanja": "河川",
-        "same": false
+        "same": false,
+        "mean": "시내와 강"
        },
        {
         "word": "축하",
         "hanja": "祝賀",
-        "same": false
+        "same": false,
+        "mean": "좋은 일을 기뻐하며 인사함"
        }
       ]
-     }
+     },
+     "mean": "임금을 섬기며 나랏일을 하는 사람"
     },
     {
      "word": "표정",
@@ -226,35 +240,42 @@
        {
         "word": "우정",
         "hanja": "友情",
-        "same": true
+        "same": true,
+        "mean": "친구 사이의 정"
        },
        {
         "word": "열정",
         "hanja": "熱情",
-        "same": true
+        "same": true,
+        "mean": "어떤 일에 뜨겁게 쏟는 마음"
        },
        {
         "word": "다정",
         "hanja": "多情",
-        "same": true
+        "same": true,
+        "mean": "정이 많고 따뜻함"
        },
        {
         "word": "정답",
         "hanja": "正答",
-        "same": false
+        "same": false,
+        "mean": "옳은 답"
        },
        {
         "word": "가정",
         "hanja": "家庭",
-        "same": false
+        "same": false,
+        "mean": "한 가족이 함께 생활하는 집"
        },
        {
         "word": "정지",
         "hanja": "停止",
-        "same": false
+        "same": false,
+        "mean": "움직이다가 멈춤"
        }
       ]
-     }
+     },
+     "mean": "마음속 감정이 얼굴에 드러난 모습"
     },
     {
      "word": "고생",
@@ -310,35 +331,42 @@
        {
         "word": "고통",
         "hanja": "苦痛",
-        "same": true
+        "same": true,
+        "mean": "몸이나 마음이 괴롭고 아픔"
        },
        {
         "word": "고민",
         "hanja": "苦悶",
-        "same": true
+        "same": true,
+        "mean": "마음속으로 괴로워하며 애를 태움"
        },
        {
         "word": "고향",
         "hanja": "故鄕",
-        "same": false
+        "same": false,
+        "mean": "태어나서 자란 곳"
        },
        {
         "word": "고급",
         "hanja": "高級",
-        "same": false
+        "same": false,
+        "mean": "물건이나 수준이 높고 좋음"
        },
        {
         "word": "고체",
         "hanja": "固體",
-        "same": false
+        "same": false,
+        "mean": "모양과 부피가 일정한 단단한 물질"
        },
        {
         "word": "고장",
         "hanja": "故障",
-        "same": false
+        "same": false,
+        "mean": "기계 따위가 제대로 움직이지 않음"
        }
       ]
-     }
+     },
+     "mean": "어렵고 힘든 일을 겪음"
     },
     {
      "word": "충직",
@@ -394,35 +422,42 @@
        {
         "word": "충성",
         "hanja": "忠誠",
-        "same": true
+        "same": true,
+        "mean": "진심에서 우러나오는 정성, 특히 나라에 바치는 정성"
        },
        {
         "word": "충신",
         "hanja": "忠臣",
-        "same": true
+        "same": true,
+        "mean": "나라와 임금을 위해 충성을 다하는 신하"
        },
        {
         "word": "충고",
         "hanja": "忠告",
-        "same": true
+        "same": true,
+        "mean": "남의 잘못을 진심으로 타이름"
        },
        {
         "word": "충분",
         "hanja": "充分",
-        "same": false
+        "same": false,
+        "mean": "모자람 없이 넉넉함"
        },
        {
         "word": "충돌",
         "hanja": "衝突",
-        "same": false
+        "same": false,
+        "mean": "서로 맞부딪침"
        },
        {
         "word": "해충",
         "hanja": "害蟲",
-        "same": false
+        "same": false,
+        "mean": "사람이나 농작물에 해를 끼치는 벌레"
        }
       ]
-     }
+     },
+     "mean": "충성스럽고 정직함"
     },
     {
      "word": "궁리",
@@ -478,35 +513,42 @@
        {
         "word": "원리",
         "hanja": "原理",
-        "same": true
+        "same": true,
+        "mean": "사물이나 현상의 바탕이 되는 이치"
        },
        {
         "word": "요리",
         "hanja": "料理",
-        "same": true
+        "same": true,
+        "mean": "음식을 만드는 일, 또는 그 음식"
        },
        {
         "word": "정리",
         "hanja": "整理",
-        "same": true
+        "same": true,
+        "mean": "흐트러진 것을 가지런히 함"
        },
        {
         "word": "도리",
         "hanja": "道理",
-        "same": true
+        "same": true,
+        "mean": "사람이 마땅히 지켜야 할 바른길"
        },
        {
         "word": "승리",
         "hanja": "勝利",
-        "same": false
+        "same": false,
+        "mean": "겨루어서 이김"
        },
        {
         "word": "편리",
         "hanja": "便利",
-        "same": false
+        "same": false,
+        "mean": "쓰기 쉽고 이용하기 좋음"
        }
       ]
-     }
+     },
+     "mean": "마음속으로 이리저리 깊이 생각함"
     },
     {
      "word": "사정",
@@ -562,35 +604,42 @@
        {
         "word": "사건",
         "hanja": "事件",
-        "same": true
+        "same": true,
+        "mean": "주목받을 만한 일"
        },
        {
         "word": "식사",
         "hanja": "食事",
-        "same": true
+        "same": true,
+        "mean": "끼니로 음식을 먹음"
        },
        {
         "word": "교사",
         "hanja": "敎師",
-        "same": false
+        "same": false,
+        "mean": "학생을 가르치는 선생님"
        },
        {
         "word": "역사",
         "hanja": "歷史",
-        "same": false
+        "same": false,
+        "mean": "지나온 과정, 또는 그 기록"
        },
        {
         "word": "사진",
         "hanja": "寫眞",
-        "same": false
+        "same": false,
+        "mean": "카메라로 찍은 모습"
        },
        {
         "word": "사과",
         "hanja": "沙果",
-        "same": false
+        "same": false,
+        "mean": "사과나무의 열매"
        }
       ]
-     }
+     },
+     "mean": "일의 형편이나 까닭"
     },
     {
      "word": "안색",
@@ -646,35 +695,42 @@
        {
         "word": "특색",
         "hanja": "特色",
-        "same": true
+        "same": true,
+        "mean": "다른 것과 구별되는 특별한 점"
        },
        {
         "word": "변색",
         "hanja": "變色",
-        "same": true
+        "same": true,
+        "mean": "빛깔이 변함"
        },
        {
         "word": "색연필",
         "hanja": "色鉛筆",
-        "same": true
+        "same": true,
+        "mean": "빛깔이 있는 연필"
        },
        {
         "word": "검색",
         "hanja": "檢索",
-        "same": false
+        "same": false,
+        "mean": "필요한 자료를 찾아냄"
        },
        {
         "word": "탐색",
         "hanja": "探索",
-        "same": false
+        "same": false,
+        "mean": "드러나지 않은 것을 살피어 찾음"
        },
        {
         "word": "수색",
         "hanja": "搜索",
-        "same": false
+        "same": false,
+        "mean": "구석구석 뒤지어 찾음"
        }
       ]
-     }
+     },
+     "mean": "얼굴빛"
     },
     {
      "word": "발견",
@@ -730,35 +786,42 @@
        {
         "word": "의견",
         "hanja": "意見",
-        "same": true
+        "same": true,
+        "mean": "어떤 일에 대한 생각"
        },
        {
         "word": "견학",
         "hanja": "見學",
-        "same": true
+        "same": true,
+        "mean": "직접 가서 보고 배움"
        },
        {
         "word": "견문",
         "hanja": "見聞",
-        "same": true
+        "same": true,
+        "mean": "보고 들어서 얻은 지식"
        },
        {
         "word": "애견",
         "hanja": "愛犬",
-        "same": false
+        "same": false,
+        "mean": "귀여워하며 기르는 개"
        },
        {
         "word": "견고",
         "hanja": "堅固",
-        "same": false
+        "same": false,
+        "mean": "굳고 단단함"
        },
        {
         "word": "파견",
         "hanja": "派遣",
-        "same": false
+        "same": false,
+        "mean": "임무를 주어 사람을 보냄"
        }
       ]
-     }
+     },
+     "mean": "미처 찾지 못했거나 알려지지 않은 것을 찾아냄"
     },
     {
      "word": "의심",
@@ -814,35 +877,42 @@
        {
         "word": "중심",
         "hanja": "中心",
-        "same": true
+        "same": true,
+        "mean": "한가운데"
        },
        {
         "word": "안심",
         "hanja": "安心",
-        "same": true
+        "same": true,
+        "mean": "걱정 없이 마음을 편히 가짐"
        },
        {
         "word": "결심",
         "hanja": "決心",
-        "same": true
+        "same": true,
+        "mean": "할 일을 마음속으로 굳게 정함"
        },
        {
         "word": "관심",
         "hanja": "關心",
-        "same": true
+        "same": true,
+        "mean": "어떤 것에 마음이 끌려 주의를 기울임"
        },
        {
         "word": "심해",
         "hanja": "深海",
-        "same": false
+        "same": false,
+        "mean": "깊은 바다"
        },
        {
         "word": "심판",
         "hanja": "審判",
-        "same": false
+        "same": false,
+        "mean": "경기에서 규칙에 따라 판정하는 일, 또는 그 사람"
        }
       ]
-     }
+     },
+     "mean": "확실히 알 수 없어 믿지 못하는 마음"
     }
    ]
   }
