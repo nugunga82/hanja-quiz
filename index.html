@@ -538,8 +538,11 @@ const A = {
   toggleImport(){ S.showImport=!S.showImport; render(); },
   doImport(){
     const j=jparse(S.importText.trim());
-    const list=(Array.isArray(j)?j:(j&&j.sets?j.sets:[j])).filter(validSet);
-    if(!list.length){ S.err='붙여 넣은 내용을 읽지 못했어요. 편집용 페이지의 「복사」 버튼으로 다시 복사해 주세요.'; render(); return; }
+    const all=(Array.isArray(j)?j:(j&&j.sets?j.sets:[j])).filter(validSet);
+    if(!all.length){ S.err='붙여 넣은 내용을 읽지 못했어요. 편집용 페이지의 「복사」 버튼으로 다시 복사해 주세요.'; render(); return; }
+    const baseTitles=new Set(S.sets.filter(x=>x._src==='base').map(x=>x.title));
+    const list=all.filter(x=>!baseTitles.has(x.title));
+    if(!list.length){ S.importText=''; S.showImport=false; S.err=''; toast('이미 목록에 있는 지문이에요.'); render(); return; }
     const cur=importedSets().filter(s=>!list.some(n=>n.title===s.title));
     LS.set('hq_imported', JSON.stringify(cur.concat(list)));
     S.importText=''; S.showImport=false; S.err=''; toast(list.length+'개 지문을 추가했어요.'); loadSets();
