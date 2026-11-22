@@ -198,6 +198,20 @@ async function loadSets(){
   catch(e){ S.err='지문 목록(sets.json)을 불러오지 못했어요.'; }
   S.sets = base.map(s=>({...s, _src:'base'})).concat(importedSets().map(s=>({...s, _src:'imp'})));
   S.setsLoaded=true; render();
+  if(isHost()) refreshMeans();
+}
+/* copy the latest meanings into a room that was opened with an older copy of the passage */
+function refreshMeans(){
+  const G=S.G; if(!G || !G.set) return;
+  const src=S.sets.find(s=>s.title===G.set.title); if(!src) return;
+  let changed=false;
+  for(const w of G.set.words||[]){
+    const sw=(src.words||[]).find(x=>x.word===w.word); if(!sw) continue;
+    if(sw.mean && w.mean!==sw.mean){ w.mean=sw.mean; changed=true; }
+    const so=(sw.r2 && sw.r2.options)||[];
+    for(const o of (w.r2 && w.r2.options)||[]){ const m=so.find(x=>x.word===o.word); if(m && m.mean && o.mean!==m.mean){ o.mean=m.mean; changed=true; } }
+  }
+  if(changed) commit();
 }
 
 /* ---------- networking (PeerJS) ---------- */
@@ -211,7 +225,7 @@ const conns=new Map();   // host: DataConnection -> pid
 /* host side */
 function saveHost(){ if(isHost() && S.G) LS.set('hq_host', JSON.stringify(S.G)); }
 function hostOpen(G){
-  S.role='host'; S.G=G; saveHost(); S.status='방을 여는 중…'; render();
+  S.role='host'; S.G=G; refreshMeans(); saveHost(); S.status='방을 여는 중…'; render();
   const id=PREFIX+G.room;
   const tryOpen=(attempt)=>{
     if(peer && !peer.destroyed) peer.destroy();
