@@ -242,13 +242,13 @@ function raw(p,round,q){
   if(round==='r2'){ const opts=r2words()[q].r2.options; let s=0, hit=0, bad=0; for(const o of opts){ if(a.includes(o.word)){ if(o.same){ s++; hit++; } else { s--; bad++; } } } return {pts:s, full: bad===0 && hit===opts.filter(o=>o.same).length}; }
   const ok = a[0]===r3list()[q].word; return {pts: ok?1:0, full: ok};
 }
-function qlist(){ return words().map((w,q)=>['r1',q]).concat(r2words().map((w,q)=>['r2',q]), r3list().map((x,q)=>['r3',q])); }
+function qlist(){ return r3list().map((x,q)=>['r3',q]).concat(words().map((w,q)=>['r1',q]), r2words().map((w,q)=>['r2',q])); }
 function revealedCount(){
   const G=S.G, n1=words().length, n2=r2words().length, n3=r3list().length, q=G.q;
   switch(G.phase){
-    case 'r1': return q; case 'r1rev': return q+1; case 'mid': return n1;
-    case 'r2': return n1+q; case 'r2rev': return n1+q+1; case 'mid2': return n1+n2;
-    case 'r3': return n1+n2+q; case 'r3rev': return n1+n2+q+1; case 'end': return n1+n2+n3;
+    case 'r3': return q; case 'r3rev': return q+1; case 'mid': return n3;
+    case 'r1': return n3+q; case 'r1rev': return n3+q+1; case 'mid2': return n3+n1;
+    case 'r2': return n3+n1+q; case 'r2rev': return n3+n1+q+1; case 'end': return n1+n2+n3;
     default: return 0;
   }
 }
@@ -417,9 +417,10 @@ function applyAct(id,d){
   else return;
   commit();
 }
+function firstPhase(){ return r3list().length ? 'r3' : 'r1'; }
 function hostTick(){
   const G=S.G, ps=plist(); if(!ps.length) return;
-  if(G.phase==='read' && ps.every(p=>p.read)){ G.phase='r1'; G.q=0; }
+  if(G.phase==='read' && ps.every(p=>p.read)){ G.phase=firstPhase(); G.q=0; }
   else if(G.phase==='r1' && ps.every(p=>getAns(p,'r1',G.q))) G.phase='r1rev';
   else if(G.phase==='r2' && ps.every(p=>getAns(p,'r2',G.q))) G.phase='r2rev';
   else if(G.phase==='r3' && ps.every(p=>getAns(p,'r3',G.q))) G.phase='r3rev';
@@ -507,7 +508,7 @@ const A = {
   kick(id){ const G=S.G; delete G.players[id]; for(const [c,p] of conns){ if(p===id){ try{ c.send({t:'kicked'}); }catch(e){} conns.delete(c); setTimeout(()=>{ try{c.close()}catch(e){} },300); } } commit(); },
   start(){ S.G.phase='read'; S.G.q=0; commit(); },
   readDone(){ act({t:'read', v: !(S.G.players[pid]||{}).read}); },
-  forceR1(){ S.G.phase='r1'; S.G.q=0; commit(); },
+  forceR1(){ S.G.phase=firstPhase(); S.G.q=0; commit(); },
   pick1(arg){ const [q,ci,ch]=arg.split('|'); const k='r1|'+q; const d=S.draft[k]||[]; d[+ci]=ch; S.draft[k]=d; render(); },
   submit1(){ const q=S.G.q, d=S.draft['r1|'+q]||[]; act({t:'r1', q, a: words()[q].chars.map((c,i)=>d[i]||'')}); },
   pick2(word){ const k='r2|'+S.G.q; const d=new Set(S.draft[k]||[]); d.has(word)?d.delete(word):d.add(word); S.draft[k]=[...d]; render(); },
@@ -517,11 +518,11 @@ const A = {
   reveal(){ const G=S.G; G.phase = G.phase==='r1'?'r1rev' : G.phase==='r2'?'r2rev' : 'r3rev'; commit(); },
   next(){
     const G=S.G;
-    if(G.phase==='r1rev'){ if(G.q+1<words().length){ G.phase='r1'; G.q++; } else { G.phase='mid'; G.q=0; } }
-    else if(G.phase==='mid'){ if(r2words().length){ G.phase='r2'; G.q=0; } else { G.phase = r3list().length?'mid2':'end'; G.q=0; } }
-    else if(G.phase==='r2rev'){ if(G.q+1<r2words().length){ G.phase='r2'; G.q++; } else { G.phase = r3list().length?'mid2':'end'; G.q=0; } }
-    else if(G.phase==='mid2'){ G.phase='r3'; G.q=0; }
-    else if(G.phase==='r3rev'){ if(G.q+1<r3list().length){ G.phase='r3'; G.q++; } else G.phase='end'; }
+    if(G.phase==='r3rev'){ if(G.q+1<r3list().length){ G.phase='r3'; G.q++; } else { G.phase='mid'; G.q=0; } }
+    else if(G.phase==='mid'){ G.phase='r1'; G.q=0; }
+    else if(G.phase==='r1rev'){ if(G.q+1<words().length){ G.phase='r1'; G.q++; } else { G.phase = r2words().length?'mid2':'end'; G.q=0; } }
+    else if(G.phase==='mid2'){ G.phase='r2'; G.q=0; }
+    else if(G.phase==='r2rev'){ if(G.q+1<r2words().length){ G.phase='r2'; G.q++; } else G.phase='end'; }
     commit();
   },
   again(){ const G=S.G; for(const p of Object.values(G.players)){ p.read=false; p.r1={}; p.r2={}; p.r3={}; } G.phase='lobby'; G.q=0; G.created=Date.now(); S.draft={}; commit(); },
@@ -571,9 +572,9 @@ function nameField(){
 }
 function rulesCard(){
   return `<section class="card"><h3>점수 규칙</h3><ul class="small" style="margin:0;padding-left:1.1rem">
-    <li>1차 훈음: 맞힌 글자마다 +1 (틀려도 0)</li>
-    <li>2차 같은 한자: 같은 한자 +1, 다른 한자 −1</li>
-    <li>3차 빈칸: 맞히면 +1</li>
+    <li>1차 문맥 빈칸: 맞히면 +1</li>
+    <li>2차 훈음: 맞힌 글자마다 +1 (틀려도 0)</li>
+    <li>3차 같은 한자: 같은 한자 +1, 다른 한자 −1</li>
     <li>콤보: 3문제 이상 연속으로 완벽히 맞히면 문제마다 보너스 +1</li>
     <li>부모: 얻는 점수(보너스 포함)는 절반, 감점은 그대로</li></ul></section>`;
 }
@@ -683,7 +684,7 @@ function nextBar(lastLabel, isLast){
 function viewR1(){
   const G=S.G, q=G.q, w=words()[q], me=G.players[pid];
   const done=getAns(me,'r1',q); const d=done || S.draft['r1|'+q] || [];
-  let h=`<section class="card">${qHead('1차 · 훈음 맞히기', q, words().length)}
+  let h=`<section class="card">${qHead('2차 · 훈음 맞히기', q, words().length)}
     <div class="bigword">${esc(w.word)}</div><p class="muted" style="text-align:center">각 글자의 뜻(훈)과 소리(음)를 고르세요.</p>${comboChip()?`<p style="text-align:center">${comboChip()}</p>`:''}</section>`;
   w.chars.forEach((c,ci)=>{
     h+=`<section class="card charblock"><div class="charlabel"><b>${esc(c.eum)}</b><span class="muted">「${esc(w.word)}」의 ${ci+1}번째 글자</span></div><div class="opts">`;
@@ -696,7 +697,7 @@ function viewR1(){
 }
 function viewR1Rev(){
   const G=S.G, q=G.q, w=words()[q], ps=plist();
-  let h=banner()+`<section class="card">${qHead('1차 · 정답', q, words().length)}
+  let h=banner()+`<section class="card">${qHead('2차 · 정답', q, words().length)}
     <div class="bighanja">${w.chars.map(c=>esc(c.ch)).join('')}</div><div class="bigword" style="font-size:2rem">${esc(w.word)}</div>
     <p style="text-align:center">${w.chars.map(c=>`<span class="hanja">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}`).join(' · ')}</p>${meanP(w.mean)}</section>`;
   w.chars.forEach((c,ci)=>{
@@ -707,23 +708,23 @@ function viewR1Rev(){
     }
     h+=`</div></section>`;
   });
-  return h+resultBoard()+nextBar('1차 결과 보기', q+1>=words().length);
+  return h+resultBoard()+nextBar(r2words().length?'2차 결과 보기':'최종 결과 보기', q+1>=words().length);
 }
 function midBoard(title, pill){
   return `<section class="card"><span class="pill" style="align-self:flex-start">${pill}</span><h1>${title}</h1></section>${resultBoard()}`;
 }
 function viewMid(){
-  return midBoard('1차 결과','1차 끝')+`<section class="card"><h2>2차 · 같은 한자 찾기</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 같은 한자를 고르면 +1점, 다른 한자를 고르면 −1점이에요.</p></section>
-    ${hostBar(`<button class="primary big" data-act="next">${r2words().length?'2차 퀴즈 시작':(r3list().length?'다음으로':'최종 결과 보기')}</button>`)}`;
+  return midBoard('1차 결과','1차 끝')+`<section class="card"><h2>2차 · 훈음 맞히기</h2><p>단어의 글자마다 뜻(훈)과 소리(음)를 고르세요. 맞힌 글자마다 +1점이에요.</p></section>
+    ${hostBar(`<button class="primary big" data-act="next">2차 퀴즈 시작</button>`)}`;
 }
 function viewMid2(){
-  return midBoard('2차까지 결과','2차 끝')+`<section class="card"><h2>3차 · 문맥 빈칸</h2><p>지문 속 문장에서 빈칸에 들어갈 한자어를 고르세요. 맞히면 +1점이에요.</p></section>
+  return midBoard('2차까지 결과','2차 끝')+`<section class="card"><h2>3차 · 같은 한자 찾기</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 같은 한자를 고르면 +1점, 다른 한자를 고르면 −1점이에요.</p></section>
     ${hostBar(`<button class="primary big" data-act="next">3차 퀴즈 시작</button>`)}`;
 }
 function viewR2(){
   const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], me=G.players[pid];
   const done=getAns(me,'r2',q); const d=done || S.draft['r2|'+q] || [];
-  let h=`<section class="card">${qHead('2차 · 같은 한자 찾기', q, r2words().length)}
+  let h=`<section class="card">${qHead('3차 · 같은 한자 찾기', q, r2words().length)}
     <div class="bigword" style="font-size:2.2rem">${esc(w.word)}</div>
     <p style="text-align:center">기준 글자: <span class="hanja" style="font-size:1.5rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>
     <p class="muted" style="text-align:center">「${esc(c.eum)}」에 이 한자를 쓰는 단어를 모두 고르세요.</p>${comboChip()?`<p style="text-align:center">${comboChip()}</p>`:''}</section><section class="card"><div class="opts">`;
@@ -735,14 +736,14 @@ function viewR2(){
 }
 function viewR2Rev(){
   const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], ps=plist();
-  let h=banner()+`<section class="card">${qHead('2차 · 정답', q, r2words().length)}
+  let h=banner()+`<section class="card">${qHead('3차 · 정답', q, r2words().length)}
     <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
   for(const o of r2Options(q)){
     const who=ps.filter(p=>(getAns(p,'r2',q)||[]).includes(o.word));
     h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>${o.mean?`<span class="omean">${esc(o.mean)}</span>`:''}<span class="who">${dotsOf(who)}</span></div>`;
   }
   h+=`</div><p class="small muted">점 색깔은 그 보기를 고른 사람이에요.</p></section>`;
-  return h+resultBoard()+nextBar(r3list().length?'2차 결과 보기':'최종 결과 보기', q+1>=r2words().length);
+  return h+resultBoard()+nextBar('최종 결과 보기', q+1>=r2words().length);
 }
 function blankSentence(s, fill){
   const parts=String(s).split('___');
@@ -752,7 +753,7 @@ function blankSentence(s, fill){
 function viewR3(){
   const G=S.G, q=G.q, it=r3list()[q], me=G.players[pid];
   const done=getAns(me,'r3',q); const d=(done&&done[0]) || S.draft['r3|'+q] || '';
-  let h=`<section class="card">${qHead('3차 · 문맥 빈칸', q, r3list().length)}
+  let h=`<section class="card">${qHead('1차 · 문맥 빈칸', q, r3list().length)}
     <p class="sentence">${blankSentence(it.sentence)}</p><p class="muted small">빈칸에 들어갈 한자어를 고르세요.</p>${comboChip()?`<p>${comboChip()}</p>`:''}</section><section class="card"><div class="opts">`;
   for(const o of r3Options(q)) h+=`<button class="opt ${d===o?'sel':''}" data-act="pick3" data-arg="${esc(o)}" ${done?'disabled':''}>${esc(o)}</button>`;
   h+=`</div></section>`;
@@ -762,7 +763,7 @@ function viewR3(){
 }
 function viewR3Rev(){
   const G=S.G, q=G.q, it=r3list()[q], w=it.w, ps=plist();
-  let h=banner()+`<section class="card">${qHead('3차 · 정답', q, r3list().length)}
+  let h=banner()+`<section class="card">${qHead('1차 · 정답', q, r3list().length)}
     <p class="sentence">${blankSentence(it.sentence, it.word)}</p>
     <p style="text-align:center"><b>${esc(w.word)}</b> <span class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</span></p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
   for(const o of r3Options(q)){
@@ -770,13 +771,13 @@ function viewR3Rev(){
     h+=`<div class="opt btn ${o===it.word?'right':(who.length?'wrong':'')}">${esc(o)}<span class="who">${dotsOf(who)}</span></div>`;
   }
   h+=`</div></section>`;
-  return h+resultBoard()+nextBar('최종 결과 보기', q+1>=r3list().length);
+  return h+resultBoard()+nextBar('1차 결과 보기', q+1>=r3list().length);
 }
 function viewEnd(){
   const rows=ranked();
   let t=`<table class="endtable"><thead><tr><th></th><th>이름</th><th class="num">1차</th><th class="num">2차</th><th class="num">3차</th><th class="num">보너스</th><th class="num">합계</th></tr></thead><tbody>`;
   for(const r of rows) t+=`<tr><td class="rank">${r.rank}</td><td><span class="row" style="gap:4px"><span class="dot" style="background:${pcolor(r.p.id)}"></span>${esc(r.p.name)} ${kindBadge(r.p)}</span></td>
-    <td class="num">${fmt(r.s.r1)}</td><td class="num">${fmt(r.s.r2)}</td><td class="num">${fmt(r.s.r3)}</td><td class="num">${fmt(r.s.bonus)}</td><td class="num"><b>${fmt(r.s.all)}</b></td></tr>`;
+    <td class="num">${fmt(r.s.r3)}</td><td class="num">${fmt(r.s.r1)}</td><td class="num">${fmt(r.s.r2)}</td><td class="num">${fmt(r.s.bonus)}</td><td class="num"><b>${fmt(r.s.all)}</b></td></tr>`;
   t+=`</tbody></table>`;
   return `<section class="card"><span class="pill" style="align-self:flex-start">끝</span><h1>최종 결과</h1><div style="overflow-x:auto">${t}</div></section>
     <section class="card"><h2>오늘 배운 한자어</h2><table class="learned"><tbody>${words().map(w=>`<tr><td><b>${esc(w.word)}</b></td><td class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</td><td class="small">${w.chars.map(c=>esc(c.hun)+' '+esc(c.eum)).join(', ')}${w.mean?'<br><span class="muted">'+esc(w.mean)+'</span>':''}</td></tr>`).join('')}</tbody></table></section>
