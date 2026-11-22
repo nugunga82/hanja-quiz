@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한자어 훈음 퀴즈</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;900&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one narrow column like a workbook page; jade ink for actions, seal red for wrong answers. */
+:root{
+  --bg:#eef3f1; --surface:#ffffff; --ink:#1c2a30; --muted:#5b6b70; --line:#d5dfdc;
+  --accent:#1f7a6b; --accent-ink:#ffffff; --accent-soft:#dcefe9;
+  --ok:#2c8a4b; --ok-soft:#e2f4e7; --bad:#c2412d; --bad-soft:#fbe5e0; --mark:#fff1b8;
+  --p0:#1f7a6b; --p1:#c2662d; --p2:#3d5fbf; --p3:#a23d8c;
+  --display:"Jua","Noto Sans KR",system-ui,sans-serif;
+  --body:"Noto Sans KR",system-ui,-apple-system,sans-serif;
+  --hanja:"Noto Serif KR","Batang",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171a; --surface:#182226; --ink:#e6eeec; --muted:#9aa9ad; --line:#2a373b;
+    --accent:#4db5a2; --accent-ink:#0d1a17; --accent-soft:#1d3833;
+    --ok:#5fcd85; --ok-soft:#1b3424; --bad:#ff7a64; --bad-soft:#3d2320; --mark:#5a4b12;
+    --p0:#4db5a2; --p1:#f0955a; --p2:#7f9cf5; --p3:#e07cc8;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171a; --surface:#182226; --ink:#e6eeec; --muted:#9aa9ad; --line:#2a373b;
+  --accent:#4db5a2; --accent-ink:#0d1a17; --accent-soft:#1d3833;
+  --ok:#5fcd85; --ok-soft:#1b3424; --bad:#ff7a64; --bad-soft:#3d2320; --mark:#5a4b12;
+  --p0:#4db5a2; --p1:#f0955a; --p2:#7f9cf5; --p3:#e07cc8;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:5}
+.brand{font-family:var(--display);font-size:1.3rem;display:flex;align-items:center;gap:8px}
+.brand .seal{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:6px;background:var(--accent);color:var(--accent-ink);font-family:var(--hanja);font-weight:900;font-size:1rem}
+#me{font-size:.85rem;color:var(--muted);text-align:right}
+main{max-width:640px;margin:0 auto;padding:16px 16px 48px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.25}
+h1{font-size:1.6rem} h2{font-size:1.3rem} h3{font-size:1.1rem}
+p{margin:0}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.between{justify-content:space-between}
+.stack{display:flex;flex-direction:column;gap:8px}
+button,.btn{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;min-height:44px}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button.danger{color:var(--bad);border-color:var(--bad)}
+button.link{border:none;background:none;color:var(--accent);padding:6px 4px;min-height:0;text-decoration:underline}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.big{width:100%;font-size:1.1rem;padding:14px}
+input[type=text],textarea,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:40px;width:100%}
+textarea{min-height:180px;resize:vertical}
+label.lbl{font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px}
+.err{background:var(--bad-soft);color:var(--bad);border-radius:10px;padding:10px 12px;font-size:.92rem}
+.note{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:.92rem}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.88rem;background:var(--surface)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.chip.done{border-color:var(--ok);background:var(--ok-soft)}
+.pill{font-size:.75rem;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:700}
+.passage{font-size:1.12rem;line-height:1.95;white-space:pre-wrap;word-break:keep-all}
+.passage mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 2px;font-weight:700}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.progress{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.progress>i{display:block;height:100%;background:var(--accent)}
+.bigword{font-family:var(--display);font-size:3rem;text-align:center;letter-spacing:.08em;line-height:1.1}
+.hanja{font-family:var(--hanja);font-weight:900}
+.bighanja{font-family:var(--hanja);font-weight:900;font-size:2.4rem;text-align:center;letter-spacing:.1em}
+.charblock{display:flex;flex-direction:column;gap:8px}
+.charlabel{display:flex;align-items:baseline;gap:8px}
+.charlabel b{font-family:var(--display);font-size:1.8rem;font-weight:400;color:var(--accent)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{font-size:1.1rem;padding:12px 8px;text-align:center;min-height:56px;border-width:2px}
+.opt.sel{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt .hz{display:block;font-family:var(--hanja);font-weight:900;font-size:1.3rem}
+.opt .who{display:flex;gap:3px;justify-content:center;margin-top:4px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:.8rem;color:var(--muted);font-weight:500}
+td.num,th.num{text-align:right}
+.mk-o{color:var(--ok);font-weight:700} .mk-x{color:var(--bad);font-weight:700}
+.rank{font-family:var(--display);font-size:1.3rem;width:2rem}
+.setcard h3{display:flex;align-items:center;gap:8px}
+.words{display:flex;flex-wrap:wrap;gap:6px}
+.words span{font-size:.85rem;background:var(--bg);border-radius:6px;padding:2px 8px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs img{width:96px;height:128px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.edword{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.edword.off{opacity:.5}
+.edgrid{display:grid;grid-template-columns:64px 1fr 64px;gap:6px}
+.edgrid input{text-align:center}
+.r2row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:6px;align-items:center}
+.r2row label{font-size:.85rem;display:flex;gap:4px;align-items:center;white-space:nowrap}
+.hostbar{border:2px dashed var(--accent);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slot{border:1px dashed var(--line);border-radius:10px;padding:10px;min-height:52px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.slot.filled{border-style:solid;background:var(--surface)}
+.spinner{width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.9rem;display:none;z-index:10;max-width:90vw}
+@media (max-width:400px){ .bigword{font-size:2.4rem} .r2row{grid-template-columns:1fr 1fr} }
+</style>
+<style>
+.roomcode{font-family:var(--display);font-size:3.2rem;letter-spacing:.25em;text-align:center;color:var(--accent);line-height:1}
+.qr{display:flex;justify-content:center}
+.qr svg{width:180px;height:180px;background:#fff;border-radius:10px;padding:6px}
+.status{background:var(--mark);border-radius:10px;padding:10px 12px;font-size:.92rem}
+.off{opacity:.45}
+.codein{font-family:var(--display);font-size:2rem;letter-spacing:.3em;text-align:center}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="seal">學</span>한자어 훈음 퀴즈</div>
+  <div id="me"></div>
+</header>
+<main id="app"><div class="card"><p class="muted"><span class="spinner"></span> 불러오는 중…</p></div></main>
+<div id="toast" role="status"></div>
+<script src="lib/peerjs.min.js"></script>
+<script src="lib/qrcode.js"></script>
+<script>
+(() => {
+const app = document.getElementById('app');
+const meEl = document.getElementById('me');
+const MAXP = 4;
+const PREFIX = 'hanjaquiz-bnj-';
+const params = new URLSearchParams(location.search);
+
+/* ---------- utils ---------- */
+const LS = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+function rid(n){ const a='abcdefghijkmnpqrstuvwxyz23456789'; const r=crypto.getRandomValues(new Uint8Array(n||10)); let s=''; for(const x of r) s+=a[x%a.length]; return s; }
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function hashStr(s){ let h=1779033703^s.length; for(let i=0;i<s.length;i++){ h=Math.imul(h^s.charCodeAt(i),3432918353); h=h<<13|h>>>19; } return h>>>0; }
+function rng(seed){ let a=seed; return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function shuffled(arr,key){ const r=rng(hashStr(key)); const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+let toastT=null;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toastT); toastT=setTimeout(()=>t.style.display='none',3200); }
+function jparse(s){ try { return JSON.parse(s); } catch(e){ return null; } }
+
+/* ---------- state ---------- */
+let pid = LS.get('hq_pid'); if(!pid){ pid = rid(10); LS.set('hq_pid', pid); }
+const S = {
+  role:null,            // 'host' | 'player' | null
+  G:null,               // game state (host owns it, players get copies)
+  sets:[], setsLoaded:false,
+  name: LS.get('hq_name') || '',
+  code: (params.get('room')||'').replace(/\D/g,'').slice(0,4),
+  err:'', status:'', draft:{}, confirm:null, showImport:false, importText:'', qr:{}
+};
+
+/* ---------- derived ---------- */
+const words = () => (S.G && S.G.set && Array.isArray(S.G.set.words)) ? S.G.set.words : [];
+const r2words = () => words().filter(w => w.r2 && Array.isArray(w.r2.options) && w.r2.options.length);
+function plist(){ return S.G ? Object.entries(S.G.players||{}).map(([id,p])=>({id, ...p})).sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0)) : []; }
+function pcolor(id){ const i = plist().findIndex(p=>p.id===id); return 'var(--p'+((i<0?0:i)%4)+')'; }
+const isHost = () => S.role==='host';
+const amIn = () => !!(S.G && S.G.players && S.G.players[pid]);
+const seedKey = () => S.G.room+'|'+S.G.created;
+function r1Options(q,ci){
+  const c = words()[q].chars[ci];
+  const all = [{ch:c.ch,hun:c.hun,eum:c.eum}].concat(Array.isArray(c.distract)?c.distract:[]);
+  const seen = new Set();
+  const uniq = all.filter(o => o && o.ch && !seen.has(o.ch) && seen.add(o.ch));
+  return shuffled(uniq, seedKey()+'|r1|'+q+'|'+ci);
+}
+function r2Options(q){ return shuffled(r2words()[q].r2.options, seedKey()+'|r2|'+q); }
+function getAns(p, round, q){ const m = p && p[round]; return m ? m[String(q)] : undefined; }
+function r1Pts(p,q){ const a=getAns(p,'r1',q); if(!a) return 0; return words()[q].chars.reduce((s,c,i)=>s+(a[i]===c.ch?1:0),0); }
+function r2Pts(p,q){ const a=getAns(p,'r2',q); if(!a) return 0; let s=0; for(const o of r2words()[q].r2.options){ if(a.includes(o.word)) s += o.same?1:-1; } return Math.max(0,s); }
+function r2Max(q){ return r2words()[q].r2.options.filter(o=>o.same).length; }
+function totals(p){ let a=0,b=0; words().forEach((w,q)=>{ a+=r1Pts(p,q); }); r2words().forEach((w,q)=>{ b+=r2Pts(p,q); }); return {r1:a, r2:b, all:a+b}; }
+function maxTotals(){ let a=0,b=0; words().forEach(w=>a+=w.chars.length); r2words().forEach((w,q)=>b+=r2Max(q)); return {r1:a,r2:b,all:a+b}; }
+
+/* ---------- sets ---------- */
+function validSet(s){ return s && typeof s.title==='string' && Array.isArray(s.words) && s.words.every(w=>w && w.word && Array.isArray(w.chars) && w.chars.every(c=>c.ch&&c.hun&&c.eum)); }
+function importedSets(){ const a=jparse(LS.get('hq_imported')||'[]'); return Array.isArray(a)?a.filter(validSet):[]; }
+async function loadSets(){
+  let base=[];
+  try { const r=await fetch('sets.json',{cache:'no-cache'}); const j=await r.json(); base=(j.sets||[]).filter(validSet); }
+  catch(e){ S.err='지문 목록(sets.json)을 불러오지 못했어요.'; }
+  S.sets = base.map(s=>({...s, _src:'base'})).concat(importedSets().map(s=>({...s, _src:'imp'})));
+  S.setsLoaded=true; render();
+}
+
+/* ---------- networking (PeerJS) ---------- */
+function peerOpts(){
+  const h=params.get('peerhost');
+  return h ? {host:h, port:+(params.get('peerport')||9000), path:'/', secure:false, debug:0} : {debug:0};
+}
+let peer=null, hostConn=null, retryT=null;
+const conns=new Map();   // host: DataConnection -> pid
+
+/* host side */
+function saveHost(){ if(isHost() && S.G) LS.set('hq_host', JSON.stringify(S.G)); }
+function hostOpen(G){
+  S.role='host'; S.G=G; saveHost(); S.status='방을 여는 중…'; render();
+  const id=PREFIX+G.room;
+  const tryOpen=(attempt)=>{
+    if(peer && !peer.destroyed) peer.destroy();
+    peer=new Peer(id, peerOpts());
+    peer.on('open',()=>{ S.status=''; render(); });
+    peer.on('connection', c=>{
+      c.on('data', d=>onHostData(c,d));
+      c.on('close',()=>onHostClose(c));
+      c.on('error',()=>onHostClose(c));
+    });
+    peer.on('disconnected',()=>{ if(peer.destroyed||!isHost()) return; S.status='연결이 잠시 끊겨 다시 잇는 중…'; render(); setTimeout(()=>{ try{ if(!peer.destroyed) peer.reconnect(); }catch(e){} },1500); });
+    peer.on('error', e=>{
+      if(e.type==='unavailable-id'){
+        if(attempt<8){ S.status='방 번호를 다시 여는 중… (조금만 기다려 주세요)'; render(); setTimeout(()=>tryOpen(attempt+1),3000); }
+        else { S.status=''; S.err='이 방 번호가 이미 쓰이고 있어요. 방을 닫고 새로 만들어 주세요.'; render(); }
+      } else if(['network','server-error','socket-error','socket-closed'].includes(e.type)){
+        S.status='연결 서버에 닿지 못했어요. 와이파이를 확인해 주세요. 다시 시도 중…'; render();
+        setTimeout(()=>{ if(isHost() && peer && (peer.destroyed||peer.disconnected)) tryOpen(attempt); },4000);
+      } else console.warn('peer', e.type, e);
+    });
+  };
+  tryOpen(0);
+}
+function onHostData(c,d){
+  if(!d || typeof d!=='object' || !S.G) return;
+  const G=S.G;
+  if(d.t==='join'){
+    const id=String(d.pid||'').slice(0,24), name=String(d.name||'').trim().slice(0,12);
+    if(!id || !name) return;
+    let p=G.players[id];
+    if(!p){
+      if(Object.keys(G.players).length>=MAXP){ c.send({t:'full'}); return; }
+      if(G.phase!=='lobby'){ c.send({t:'started'}); return; }
+      p=G.players[id]={name, joinedAt:Date.now(), read:false, r1:{}, r2:{}};
+    } else p.name=name;
+    conns.set(c,id); p.online=true; commit(); return;
+  }
+  const id=conns.get(c);
+  if(id && G.players[id]) applyAct(id,d);
+}
+function onHostClose(c){
+  const id=conns.get(c); conns.delete(c);
+  if(id && S.G && S.G.players[id] && ![...conns.values()].includes(id)){ S.G.players[id].online=false; commit(); }
+}
+function applyAct(id,d){
+  const G=S.G, p=G.players[id]; if(!p) return;
+  if(d.t==='read' && G.phase==='read') p.read=!!d.v;
+  else if(d.t==='r1' && G.phase==='r1' && d.q===G.q && Array.isArray(d.a) && !getAns(p,'r1',G.q)) p.r1[G.q]=d.a.map(String).slice(0,8);
+  else if(d.t==='r2' && G.phase==='r2' && d.q===G.q && Array.isArray(d.a) && !getAns(p,'r2',G.q)) p.r2[G.q]=d.a.map(String).slice(0,12);
+  else return;
+  commit();
+}
+function hostTick(){
+  const G=S.G, ps=plist(); if(!ps.length) return;
+  if(G.phase==='read' && ps.every(p=>p.read)){ G.phase='r1'; G.q=0; }
+  else if(G.phase==='r1' && ps.every(p=>getAns(p,'r1',G.q))) G.phase='r1rev';
+  else if(G.phase==='r2' && ps.every(p=>getAns(p,'r2',G.q))) G.phase='r2rev';
+}
+function broadcast(msg){ const m=msg||{t:'state', g:S.G}; for(const c of conns.keys()){ try{ if(c.open) c.send(m); }catch(e){} } }
+function commit(){ hostTick(); saveHost(); broadcast(); render(); }
+
+/* player side */
+function playerConnect(){
+  S.role='player'; LS.set('hq_room', S.code); S.status='진행자 폰에 연결하는 중…'; render();
+  if(peer && !peer.destroyed && peer.open){ openConn(); return; }
+  if(peer && !peer.destroyed){ try{ peer.reconnect(); }catch(e){} return; }
+  peer=new Peer(peerOpts());
+  peer.on('open',()=>openConn());
+  peer.on('disconnected',()=>{ if(peer.destroyed) return; setTimeout(()=>{ try{ if(!peer.destroyed) peer.reconnect(); }catch(e){} },1500); });
+  peer.on('error', e=>{
+    if(S.role!=='player') return;
+    if(e.type==='peer-unavailable'){
+      if(S.G){ S.status='진행자 폰을 기다리는 중… (진행자 화면이 켜져 있는지 확인해 주세요)'; render(); scheduleRetry(); }
+      else { S.status=''; S.err='방 '+S.code+'을(를) 찾지 못했어요. 방 번호를 확인하고, 진행자 폰 화면이 켜져 있는지 봐 주세요.'; S.role=null; render(); }
+    } else if(['network','server-error','socket-error','socket-closed','disconnected'].includes(e.type)){
+      S.status='연결 서버에 닿지 못했어요. 와이파이를 확인해 주세요. 다시 시도 중…'; render(); scheduleRetry();
+    } else console.warn('peer', e.type, e);
+  });
+}
+function openConn(){
+  if(hostConn){ try{ hostConn.close(); }catch(e){} }
+  const c=peer.connect(PREFIX+S.code, {reliable:true}); hostConn=c;
+  c.on('open',()=>{ S.status=''; S.err=''; c.send({t:'join', pid, name:S.name}); render(); });
+  c.on('data', d=>{
+    if(c!==hostConn || !d) return;
+    if(d.t==='state'){ S.G=d.g; render(); }
+    else if(d.t==='full') leaveRoom('이미 4명이 모두 참여했어요.');
+    else if(d.t==='started') leaveRoom('게임이 이미 시작되어 들어갈 수 없어요. 다음 판에 참여해 주세요.');
+    else if(d.t==='kicked') leaveRoom('진행자가 방에서 뺐어요.');
+    else if(d.t==='closed') leaveRoom('진행자가 방을 닫았어요.');
+  });
+  c.on('close',()=>{ if(c!==hostConn || S.role!=='player') return; S.status='진행자 폰과 연결이 끊겼어요. 다시 연결 중…'; render(); scheduleRetry(); });
+  c.on('error',()=>{});
+}
+function scheduleRetry(){
+  clearTimeout(retryT);
+  retryT=setTimeout(()=>{ if(S.role==='player' && !(hostConn && hostConn.open)) playerConnect(); },3000);
+}
+function leaveRoom(msg){
+  clearTimeout(retryT);
+  S.role=null; S.G=null; S.draft={}; LS.del('hq_room');
+  const c=hostConn; hostConn=null; try{ c && c.close(); }catch(e){}
+  if(msg) S.err=msg; S.status=''; render();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible') return;
+  if(S.role==='player' && !(hostConn && hostConn.open)) playerConnect();
+  if(S.role==='host' && peer && peer.disconnected && !peer.destroyed){ try{ peer.reconnect(); }catch(e){} }
+});
+
+/* one entry point for game actions: host applies locally, players send */
+function act(d){ if(isHost()) applyAct(pid,d); else if(hostConn && hostConn.open) hostConn.send(d); else toast('연결 중이에요. 잠시 후 다시 눌러 주세요.'); }
+function needName(){ const n=(S.name||'').trim(); if(!n){ S.err='먼저 이름을 적어 주세요.'; render(); return null; } return n.slice(0,12); }
+
+/* ---------- actions ---------- */
+const A = {
+  createRoom(i){
+    const name=needName(); if(!name) return;
+    const set=S.sets[+i]; if(!set) return;
+    const {_src, ...clean}=set;
+    const room=String(1000+Math.floor(Math.random()*9000));
+    S.err=''; S.draft={};
+    hostOpen({room, set:clean, phase:'lobby', q:0, hostPid:pid, created:Date.now(),
+      players:{[pid]:{name, joinedAt:Date.now(), read:false, r1:{}, r2:{}, online:true}}});
+  },
+  resumeHost(){ const G=jparse(LS.get('hq_host')); if(G && G.room){ S.err=''; hostOpen(G); } },
+  join(){
+    const name=needName(); if(!name) return;
+    S.code=(document.getElementById('code')?.value||S.code).replace(/\D/g,'').slice(0,4);
+    if(S.code.length!==4){ S.err='방 번호 4자리를 적어 주세요.'; render(); return; }
+    S.err=''; S.G=null; playerConnect();
+  },
+  rejoin(){ S.code=LS.get('hq_room')||''; if(S.code && needName()){ S.err=''; playerConnect(); } },
+  kick(id){ const G=S.G; delete G.players[id]; for(const [c,p] of conns){ if(p===id){ try{ c.send({t:'kicked'}); }catch(e){} conns.delete(c); setTimeout(()=>{ try{c.close()}catch(e){} },300); } } commit(); },
+  start(){ S.G.phase='read'; S.G.q=0; commit(); },
+  readDone(){ act({t:'read', v: !(S.G.players[pid]||{}).read}); },
+  forceR1(){ S.G.phase='r1'; S.G.q=0; commit(); },
+  pick1(arg){ const [q,ci,ch]=arg.split('|'); const k='r1|'+q; const d=S.draft[k]||[]; d[+ci]=ch; S.draft[k]=d; render(); },
+  submit1(){ const q=S.G.q, d=S.draft['r1|'+q]||[]; act({t:'r1', q, a: words()[q].chars.map((c,i)=>d[i]||'')}); },
+  pick2(word){ const k='r2|'+S.G.q; const d=new Set(S.draft[k]||[]); d.has(word)?d.delete(word):d.add(word); S.draft[k]=[...d]; render(); },
+  submit2(){ const q=S.G.q, d=S.draft['r2|'+q]||[]; act({t:'r2', q, a: d.length?d:['__none__']}); },
+  reveal(){ S.G.phase = S.G.phase==='r1'?'r1rev':'r2rev'; commit(); },
+  next(){
+    const G=S.G;
+    if(G.phase==='r1rev'){ if(G.q+1<words().length){ G.phase='r1'; G.q++; } else { G.phase='mid'; G.q=0; } }
+    else if(G.phase==='mid'){ if(r2words().length){ G.phase='r2'; G.q=0; } else G.phase='end'; }
+    else if(G.phase==='r2rev'){ if(G.q+1<r2words().length){ G.phase='r2'; G.q++; } else G.phase='end'; }
+    commit();
+  },
+  again(){ const G=S.G; for(const p of Object.values(G.players)){ p.read=false; p.r1={}; p.r2={}; } G.phase='lobby'; G.q=0; G.created=Date.now(); S.draft={}; commit(); },
+  closeRoom(){
+    if(S.confirm?.act!=='closeRoom'){ S.confirm={act:'closeRoom', text:'방을 닫을까요? 참여한 폰들의 연결도 끊어져요.'}; render(); return; }
+    S.confirm=null; broadcast({t:'closed'});
+    setTimeout(()=>{ try{ peer && peer.destroy(); }catch(e){} peer=null; },400);
+    conns.clear(); LS.del('hq_host'); S.role=null; S.G=null; S.status=''; render();
+  },
+  leave(){ leaveRoom(''); },
+  cancelConfirm(){ S.confirm=null; render(); },
+  toggleImport(){ S.showImport=!S.showImport; render(); },
+  doImport(){
+    const j=jparse(S.importText.trim());
+    const list=(Array.isArray(j)?j:(j&&j.sets?j.sets:[j])).filter(validSet);
+    if(!list.length){ S.err='붙여 넣은 내용을 읽지 못했어요. 편집용 페이지의 「복사」 버튼으로 다시 복사해 주세요.'; render(); return; }
+    const cur=importedSets().filter(s=>!list.some(n=>n.title===s.title));
+    LS.set('hq_imported', JSON.stringify(cur.concat(list)));
+    S.importText=''; S.showImport=false; S.err=''; toast(list.length+'개 지문을 추가했어요.'); loadSets();
+  },
+  delImported(i){
+    const s=S.sets[+i]; if(!s || s._src!=='imp') return;
+    LS.set('hq_imported', JSON.stringify(importedSets().filter(x=>x.title!==s.title))); loadSets();
+  }
+};
+
+/* ---------- views ---------- */
+function chipStatus(done, label){
+  return plist().map(p=>`<span class="chip ${done(p)?'done':''} ${p.online===false?'off':''}"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}${p.id===pid?' (나)':''} · ${p.online===false?'연결 끊김':(done(p)?label[0]:label[1])}</span>`).join('');
+}
+function confirmBox(){
+  if(!S.confirm) return '';
+  return `<div class="card"><p>${esc(S.confirm.text)}</p><div class="row">
+    <button class="danger" data-act="${S.confirm.act}">네</button><button data-act="cancelConfirm">취소</button></div></div>`;
+}
+function nameField(){
+  return `<div><label class="lbl" for="myname">내 이름</label>
+    <input type="text" id="myname" data-bind="name" maxlength="12" placeholder="예: 서연" value="${esc(S.name)}" autocomplete="off"></div>`;
+}
+function viewHome(){
+  let h=`<section class="card"><h1>지문 읽고 한자어 맞히기</h1>
+    <p class="muted">같은 와이파이에서 최대 ${MAXP}명이 각자 폰으로 참여해요. 로그인은 필요 없어요.</p>${nameField()}</section>`;
+  const savedRoom=LS.get('hq_room'), savedHost=jparse(LS.get('hq_host'));
+  if(savedHost && savedHost.room && Date.now()-(savedHost.created||0)<12*3600e3)
+    h+=`<div class="card"><p>진행하던 방 <b>${esc(savedHost.room)}</b>(${esc(savedHost.set?.title)})이 있어요.</p><button class="primary" data-act="resumeHost">진행하던 방 다시 열기</button></div>`;
+  else if(savedRoom) h+=`<div class="card"><p>참여하던 방 <b>${esc(savedRoom)}</b>이 있어요.</p><button class="primary" data-act="rejoin">그 방에 다시 들어가기</button></div>`;
+  h+=`<section class="card"><h2>참여하기</h2><p class="small muted">진행자 화면에 나온 방 번호 4자리를 적어 주세요.</p>
+    <input type="text" id="code" class="codein" inputmode="numeric" maxlength="4" placeholder="0000" value="${esc(S.code)}" data-bind="code" autocomplete="off">
+    <button class="primary big" data-act="join">참여하기</button></section>`;
+  h+=`<section class="stack"><h2>진행하기 (방 만들기)</h2>`;
+  if(!S.setsLoaded) h+=`<div class="card"><p class="muted"><span class="spinner"></span> 지문을 불러오는 중…</p></div>`;
+  else if(!S.sets.length) h+=`<div class="card"><p>등록된 지문이 없어요.</p></div>`;
+  S.sets.forEach((s,i)=>{
+    const ws=s.words||[];
+    h+=`<article class="card setcard"><h3>${esc(s.title)} <span class="pill">${ws.length}단어</span></h3>
+      <div class="words">${ws.map(w=>`<span>${esc(w.word)}</span>`).join('')}</div>
+      <div class="row"><button class="primary" data-act="createRoom" data-arg="${i}">이 지문으로 방 만들기</button>
+      ${s._src==='imp'?`<button class="link" data-act="delImported" data-arg="${i}">이 폰에서 지우기</button>`:''}</div></article>`;
+  });
+  h+=`<button class="link" data-act="toggleImport">${S.showImport?'붙여넣기 닫기':'편집용 페이지에서 복사한 지문 붙여넣기'}</button>`;
+  if(S.showImport) h+=`<div class="card"><label class="lbl" for="imp">복사한 내용을 붙여 넣으세요 (이 폰에만 저장돼요)</label>
+    <textarea id="imp" data-bind="importText">${esc(S.importText)}</textarea><button class="primary" data-act="doImport">추가하기</button></div>`;
+  return h+`</section>`;
+}
+function hostBar(inner){ return isHost() ? `<div class="hostbar"><span class="pill" style="align-self:flex-start">진행자 메뉴</span>${inner}</div>` : ''; }
+function joinUrl(){ return location.origin+location.pathname+'?room='+S.G.room; }
+function qrSvg(){
+  const url=joinUrl(); if(S.qr[url]) return S.qr[url];
+  try{ const q=qrcode(0,'M'); q.addData(url); q.make(); S.qr[url]=q.createSvgTag({cellSize:4, margin:2, scalable:true}); }catch(e){ S.qr[url]=''; }
+  return S.qr[url];
+}
+function viewLobby(){
+  const G=S.G, ps=plist(); let h='';
+  if(isHost()) h+=`<section class="card"><span class="pill" style="align-self:flex-start">방 번호</span>
+    <div class="roomcode">${esc(G.room)}</div><div class="qr">${qrSvg()}</div>
+    <p class="small muted" style="text-align:center">아이 폰 카메라로 QR을 찍거나, 같은 주소를 열고 방 번호를 넣으면 들어와요.<br>${esc(joinUrl())}</p></section>`;
+  h+=`<section class="card"><span class="pill" style="align-self:flex-start">대기실 · 방 ${esc(G.room)}</span><h1>${esc(G.set?.title)}</h1><div class="slots">`;
+  for(let i=0;i<MAXP;i++){
+    const p=ps[i];
+    h+= p ? `<div class="slot filled ${p.online===false?'off':''}"><span class="row"><span class="dot" style="background:var(--p${i})"></span>${esc(p.name)}${p.id===pid?' (나)':''}${p.id===G.hostPid?' <span class="pill">진행</span>':''}</span>
+      ${isHost()&&p.id!==pid?`<button class="link" data-act="kick" data-arg="${esc(p.id)}">빼기</button>`:''}</div>`
+      : `<div class="slot muted small">빈 자리</div>`;
+  }
+  h+=`</div>`;
+  if(!isHost()) h+=`<p class="note">진행자가 시작하면 바로 지문이 나와요.</p>`;
+  h+=`</section>`;
+  h+=hostBar(`<button class="primary big" data-act="start" ${ps.length?'':'disabled'}>시작하기 (${ps.length}명)</button>`);
+  return h;
+}
+function highlight(text, ws){
+  const list=[...new Set(ws.map(w=>w.word).filter(Boolean))].sort((a,b)=>b.length-a.length);
+  const safe=esc(text); if(!list.length) return safe;
+  const re=new RegExp('('+list.map(w=>esc(w).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','g');
+  return safe.replace(re,'<mark>$1</mark>');
+}
+function viewRead(){
+  const G=S.G, me=G.players[pid];
+  return `<section class="card"><span class="pill" style="align-self:flex-start">지문 읽기</span><h1>${esc(G.set?.title)}</h1>
+    <p class="small muted">노란색 단어가 퀴즈에 나와요. 다 읽으면 아래 버튼을 눌러 주세요.</p>
+    <div class="passage">${highlight(G.set?.passage||'', words())}</div></section>
+    <button class="${me?.read?'':'primary'} big" data-act="readDone">${me?.read?'다 읽음 취소':'다 읽었어요'}</button>
+    <div class="row">${chipStatus(p=>p.read,['다 읽음','읽는 중'])}</div>
+    ${hostBar(`<p class="small">모두 다 읽으면 1차 퀴즈가 자동으로 시작돼요.</p><button data-act="forceR1">기다리지 않고 1차 시작</button>`)}`;
+}
+function qHead(label,q,n){
+  return `<div class="qhead"><span class="pill">${label}</span><span class="small muted" style="font-variant-numeric:tabular-nums">${q+1} / ${n}</span></div>
+    <div class="progress"><i style="width:${Math.round((q+1)/n*100)}%"></i></div>`;
+}
+function viewR1(){
+  const G=S.G, q=G.q, w=words()[q], me=G.players[pid];
+  const done=getAns(me,'r1',q); const d=done || S.draft['r1|'+q] || [];
+  let h=`<section class="card">${qHead('1차 · 훈음 맞히기', q, words().length)}
+    <div class="bigword">${esc(w.word)}</div><p class="muted" style="text-align:center">각 글자의 뜻(훈)과 소리(음)를 고르세요.</p></section>`;
+  w.chars.forEach((c,ci)=>{
+    h+=`<section class="card charblock"><div class="charlabel"><b>${esc(c.eum)}</b><span class="muted">「${esc(w.word)}」의 ${ci+1}번째 글자</span></div><div class="opts">`;
+    for(const o of r1Options(q,ci)) h+=`<button class="opt ${d[ci]===o.ch?'sel':''}" data-act="pick1" data-arg="${q}|${ci}|${esc(o.ch)}" ${done?'disabled':''}>${esc(o.hun)} ${esc(o.eum)}</button>`;
+    h+=`</div></section>`;
+  });
+  h+= !done ? `<button class="primary big" data-act="submit1" ${w.chars.every((c,i)=>d[i])?'':'disabled'}>제출하기</button>` : `<p class="note">제출했어요. 친구들을 기다리는 중…</p>`;
+  h+=`<div class="row">${chipStatus(p=>!!getAns(p,'r1',q),['제출','생각 중'])}</div>`;
+  return h+hostBar(`<p class="small">모두 제출하면 정답이 자동으로 공개돼요.</p><button data-act="reveal">기다리지 않고 정답 공개</button>`);
+}
+function viewR1Rev(){
+  const G=S.G, q=G.q, w=words()[q], ps=plist();
+  let h=`<section class="card">${qHead('1차 · 정답', q, words().length)}
+    <div class="bighanja">${w.chars.map(c=>esc(c.ch)).join('')}</div><div class="bigword" style="font-size:2rem">${esc(w.word)}</div>
+    <p style="text-align:center">${w.chars.map(c=>`<span class="hanja">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}`).join(' · ')}</p></section>`;
+  w.chars.forEach((c,ci)=>{
+    h+=`<section class="card charblock"><div class="charlabel"><b>${esc(c.eum)}</b><span class="muted">고른 사람</span></div><div class="opts">`;
+    for(const o of r1Options(q,ci)){
+      const who=ps.filter(p=>(getAns(p,'r1',q)||[])[ci]===o.ch), right=o.ch===c.ch;
+      h+=`<div class="opt btn ${right?'right':(who.length?'wrong':'')}"><span class="hz">${esc(o.ch)}</span>${esc(o.hun)} ${esc(o.eum)}
+        <span class="who">${who.map(p=>`<span class="dot" title="${esc(p.name)}" style="background:${pcolor(p.id)}"></span>`).join('')}</span></div>`;
+    }
+    h+=`</div></section>`;
+  });
+  h+=`<section class="card"><table><thead><tr><th>이름</th>${w.chars.map(c=>`<th>${esc(c.eum)}</th>`).join('')}<th class="num">이번</th><th class="num">합계</th></tr></thead><tbody>`;
+  for(const p of ps){ const a=getAns(p,'r1',q)||[];
+    h+=`<tr><td><span class="row"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}</span></td>${w.chars.map((c,i)=>a[i]===c.ch?'<td class="mk-o">O</td>':'<td class="mk-x">X</td>').join('')}<td class="num">${r1Pts(p,q)}</td><td class="num">${totals(p).all}</td></tr>`; }
+  h+=`</tbody></table></section>`;
+  h+=hostBar(`<button class="primary big" data-act="next">${q+1>=words().length?'1차 결과 보기':'다음 문제'}</button>`);
+  if(!isHost()) h+=`<p class="muted small" style="text-align:center">진행자가 다음으로 넘기면 바뀌어요.</p>`;
+  return h;
+}
+function scoreTable(final){
+  const ps=plist().map(p=>({...p, t:totals(p)})).sort((a,b)=>(final?b.t.all-a.t.all:b.t.r1-a.t.r1)); const mx=maxTotals();
+  let h=`<table><thead><tr><th></th><th>이름</th><th class="num">1차</th>${final?'<th class="num">2차</th><th class="num">합계</th>':''}</tr></thead><tbody>`;
+  let rank=0, prev=null;
+  ps.forEach((p,i)=>{ const v=final?p.t.all:p.t.r1; if(v!==prev){ rank=i+1; prev=v; }
+    h+=`<tr><td class="rank">${rank}</td><td><span class="row"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}${p.id===pid?' (나)':''}</span></td>
+    <td class="num">${p.t.r1}/${mx.r1}</td>${final?`<td class="num">${p.t.r2}/${mx.r2}</td><td class="num"><b>${p.t.all}</b></td>`:''}</tr>`; });
+  return h+`</tbody></table>`;
+}
+function viewMid(){
+  return `<section class="card"><span class="pill" style="align-self:flex-start">1차 끝</span><h1>1차 결과</h1>${scoreTable(false)}</section>
+    <section class="card"><h2>2차 퀴즈 안내</h2><p>단어 속 한 글자와 <b>같은 한자</b>를 쓰는 단어를 <b>모두</b> 고르세요. 맞게 고르면 +1점, 잘못 고르면 −1점이에요(문제마다 0점 아래로는 안 내려가요).</p></section>
+    ${hostBar(`<button class="primary big" data-act="next">${r2words().length?'2차 퀴즈 시작':'최종 결과 보기'}</button>`)}`;
+}
+function viewR2(){
+  const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], me=G.players[pid];
+  const done=getAns(me,'r2',q); const d=done || S.draft['r2|'+q] || [];
+  let h=`<section class="card">${qHead('2차 · 같은 한자 찾기', q, r2words().length)}
+    <div class="bigword" style="font-size:2.2rem">${esc(w.word)}</div>
+    <p style="text-align:center">기준 글자: <span class="hanja" style="font-size:1.5rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>
+    <p class="muted" style="text-align:center">「${esc(c.eum)}」에 이 한자를 쓰는 단어를 모두 고르세요.</p></section><section class="card"><div class="opts">`;
+  for(const o of r2Options(q)) h+=`<button class="opt ${d.includes(o.word)?'sel':''}" data-act="pick2" data-arg="${esc(o.word)}" aria-pressed="${d.includes(o.word)}" ${done?'disabled':''}>${esc(o.word)}</button>`;
+  h+=`</div></section>`;
+  h+= !done ? `<button class="primary big" data-act="submit2">${d.length?d.length+'개 골라서 제출':'하나도 없다고 제출'}</button>` : `<p class="note">제출했어요. 친구들을 기다리는 중…</p>`;
+  h+=`<div class="row">${chipStatus(p=>!!getAns(p,'r2',q),['제출','생각 중'])}</div>`;
+  return h+hostBar(`<p class="small">모두 제출하면 정답이 자동으로 공개돼요.</p><button data-act="reveal">기다리지 않고 정답 공개</button>`);
+}
+function viewR2Rev(){
+  const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], ps=plist();
+  let h=`<section class="card">${qHead('2차 · 정답', q, r2words().length)}
+    <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p></section><section class="card"><div class="opts">`;
+  for(const o of r2Options(q)){
+    const who=ps.filter(p=>(getAns(p,'r2',q)||[]).includes(o.word));
+    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>
+      <span class="who">${who.map(p=>`<span class="dot" title="${esc(p.name)}" style="background:${pcolor(p.id)}"></span>`).join('')}</span></div>`;
+  }
+  h+=`</div><p class="small muted">점 색깔은 그 보기를 고른 사람이에요.</p></section>
+    <section class="card"><table><thead><tr><th>이름</th><th class="num">이번</th><th class="num">합계</th></tr></thead><tbody>`;
+  for(const p of ps) h+=`<tr><td><span class="row"><span class="dot" style="background:${pcolor(p.id)}"></span>${esc(p.name)}</span></td><td class="num">${r2Pts(p,q)}/${r2Max(q)}</td><td class="num">${totals(p).all}</td></tr>`;
+  h+=`</tbody></table></section>`;
+  h+=hostBar(`<button class="primary big" data-act="next">${q+1>=r2words().length?'최종 결과 보기':'다음 문제'}</button>`);
+  if(!isHost()) h+=`<p class="muted small" style="text-align:center">진행자가 다음으로 넘기면 바뀌어요.</p>`;
+  return h;
+}
+function viewEnd(){
+  return `<section class="card"><span class="pill" style="align-self:flex-start">끝</span><h1>최종 결과</h1>${scoreTable(true)}</section>
+    <section class="card"><h2>오늘 배운 한자어</h2><table><tbody>${words().map(w=>`<tr><td><b>${esc(w.word)}</b></td><td class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</td><td class="small">${w.chars.map(c=>esc(c.hun)+' '+esc(c.eum)).join(', ')}</td></tr>`).join('')}</tbody></table></section>
+    ${hostBar(`<button class="primary big" data-act="again">같은 지문으로 다시 하기</button>`)}`;
+}
+function viewGame(){
+  const ph=S.G.phase;
+  const body = ph==='lobby'?viewLobby() : ph==='read'?viewRead() : ph==='r1'?viewR1() : ph==='r1rev'?viewR1Rev() : ph==='mid'?viewMid() : ph==='r2'?viewR2() : ph==='r2rev'?viewR2Rev() : viewEnd();
+  const foot = isHost() ? `${confirmBox()}<button class="link" data-act="closeRoom">방 닫기</button>` : `<button class="link" data-act="leave">방에서 나가기</button>`;
+  return body+foot;
+}
+
+/* ---------- render (keeps focus) ---------- */
+let lastHTML='';
+function render(){
+  let h='';
+  if(S.status) h+=`<div class="status" role="status"><span class="spinner"></span> ${esc(S.status)}</div>`;
+  if(S.err) h+=`<div class="err" role="alert">${esc(S.err)}</div>`;
+  if(S.role && S.G && (isHost() || amIn())) h+=viewGame();
+  else if(S.role==='player') h+=`<div class="card"><p class="muted">방 ${esc(S.code)}에 들어가는 중…</p><button class="link" data-act="leave">취소</button></div>`;
+  else if(S.role==='host') h+=`<div class="card"><p class="muted">방을 준비하는 중…</p></div>`;
+  else h+=viewHome();
+  meEl.textContent = S.name ? S.name+(isHost()?' · 진행자':'') : '';
+  if(h===lastHTML) return; lastHTML=h;
+  const ae=document.activeElement, fid=ae && ae.id, ss=ae && ae.selectionStart, se=ae && ae.selectionEnd;
+  app.innerHTML=h;
+  if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); try{ if(ss!=null) el.setSelectionRange(ss,se); }catch(e){} } }
+}
+
+/* ---------- events ---------- */
+app.addEventListener('click', e=>{
+  const b=e.target.closest('[data-act]'); if(!b || b.disabled) return;
+  const f=A[b.dataset.act]; if(f) f(b.dataset.arg);
+});
+app.addEventListener('input', e=>{
+  const el=e.target, k=el.dataset.bind; if(!k) return;
+  if(k==='name'){ S.name=el.value; LS.set('hq_name', el.value); meEl.textContent=el.value; }
+  else if(k==='code'){ S.code=el.value.replace(/\D/g,'').slice(0,4); }
+  else if(k==='importText'){ S.importText=el.value; }
+});
+app.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.id==='code') A.join(); });
+
+if(typeof Peer==='undefined') S.err='연결 모듈을 불러오지 못했어요. 페이지를 새로 고쳐 주세요.';
+render();
+loadSets();
+if(S.code && S.name && !LS.get('hq_host')) { /* came from QR with a saved name: show home with code filled, one tap to join */ }
+})();
+</script>
+</body>
+</html>
