@@ -149,6 +149,7 @@ td.num,th.num{text-align:right}
 .endtable th,.endtable td{padding:8px 4px;font-size:.88rem}
 table.learned td:nth-child(-n+2){white-space:nowrap}
 .endtable td:nth-child(2){white-space:nowrap}
+.huneum{display:block;font-size:.85rem;color:var(--ink);margin:2px 0 4px;font-weight:500}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:20}
 @media (prefers-reduced-motion: reduce){ .banner.anim{animation:none} }
 </style>
@@ -275,6 +276,16 @@ function ranked(upto){
 /* ---------- sets ---------- */
 function validSet(s){ return s && typeof s.title==='string' && Array.isArray(s.words) && s.words.every(w=>w && w.word && Array.isArray(w.chars) && w.chars.every(c=>c.ch&&c.hun&&c.eum)); }
 function importedSets(){ const a=jparse(LS.get('hq_imported')||'[]'); return Array.isArray(a)?a.filter(validSet):[]; }
+let HUN={};
+fetch('hun.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{ HUN=j||{}; lastHTML=''; render(); }).catch(()=>{});
+/* '失望' + '실망' -> '잃을 실 · 바랄 망' (the sound comes from the word, so 두음법칙 is kept) */
+function hunLine(hanja, word){
+  const hs=[...String(hanja||'')], ws=[...String(word||'')];
+  if(!hs.length || hs.length!==ws.length) return '';
+  const known={}; words().forEach(w=>w.chars.forEach(c=>{ known[c.ch]=known[c.ch]||c.hun; (c.distract||[]).forEach(d=>{ known[d.ch]=known[d.ch]||d.hun; }); }));
+  return hs.map((h,i)=>{ const t=HUN[h]||known[h]; return t? t+' '+ws[i] : h+' '+ws[i]; }).join(' · ');
+}
+const charsLine = w => w.chars.map(c=>`${c.hun} ${c.eum}`).join(' · ');
 async function loadSets(){
   let base=[];
   try { const r=await fetch('sets.json',{cache:'no-cache'}); const j=await r.json(); base=(j.sets||[]).filter(validSet); }
@@ -760,10 +771,10 @@ function viewR2(){
 function viewR2Rev(){
   const G=S.G, q=G.q, w=r2words()[q], c=w.chars[w.r2.target]||w.chars[0], ps=plist();
   let h=banner()+`<section class="card">${qHead('3차 · 정답', q, r2words().length)}
-    <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
+    <p style="text-align:center"><span class="bigword" style="font-size:1.8rem">${esc(w.word)}</span><br><span class="hanja">${w.chars.map(x=>esc(x.ch)).join('')}</span> ${esc(charsLine(w))}<br>기준 글자 <span class="hanja" style="font-size:1.4rem">${esc(c.ch)}</span> ${esc(c.hun)} ${esc(c.eum)}</p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
   for(const o of r2Options(q)){
     const who=ps.filter(p=>(getAns(p,'r2',q)||[]).includes(o.word));
-    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>${o.mean?`<span class="omean">${esc(o.mean)}</span>`:''}<span class="who">${dotsOf(who)}</span></div>`;
+    h+=`<div class="opt btn ${o.same?'right':(who.length?'wrong':'')}">${esc(o.word)}<span class="hz">${esc(o.hanja)}</span><span class="huneum">${esc(hunLine(o.hanja,o.word))}</span><span class="small">${o.same?'같은 한자':'다른 한자'}</span>${o.mean?`<span class="omean">${esc(o.mean)}</span>`:''}<span class="who">${dotsOf(who)}</span></div>`;
   }
   h+=`</div><p class="small muted">점 색깔은 그 보기를 고른 사람이에요.</p></section>`;
   return h+resultBoard()+nextBar('최종 결과 보기', q+1>=r2words().length);
@@ -788,10 +799,11 @@ function viewR3Rev(){
   const G=S.G, q=G.q, it=r3list()[q], w=it.w, ps=plist();
   let h=banner()+`<section class="card">${qHead('1차 · 정답', q, r3list().length)}
     <p class="sentence">${blankSentence(it.sentence, it.word)}</p>
-    <p style="text-align:center"><b>${esc(w.word)}</b> <span class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</span></p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
+    <p style="text-align:center"><b>${esc(w.word)}</b> <span class="hanja">${w.chars.map(c=>esc(c.ch)).join('')}</span><br><span class="small">${esc(charsLine(w))}</span></p>${meanP(w.mean)}</section><section class="card"><div class="opts">`;
   for(const o of r3Options(q)){
     const who=ps.filter(p=>(getAns(p,'r3',q)||[])[0]===o);
-    h+=`<div class="opt btn ${o===it.word?'right':(who.length?'wrong':'')}">${esc(o)}<span class="who">${dotsOf(who)}</span></div>`;
+    const ow=words().find(x=>x.word===o);
+    h+=`<div class="opt btn ${o===it.word?'right':(who.length?'wrong':'')}">${esc(o)}${ow?`<span class="hz">${ow.chars.map(c=>esc(c.ch)).join('')}</span><span class="huneum">${esc(charsLine(ow))}</span>`:''}<span class="who">${dotsOf(who)}</span></div>`;
   }
   h+=`</div></section>`;
   return h+resultBoard()+nextBar('1차 결과 보기', q+1>=r3list().length);
